@@ -1,0 +1,8 @@
+﻿  Scene.cpp
+D:\Projects\VsProjects\Practicing\SoftRasterizer\SoftRasterizer\Scene.cpp(94,27): warning C4018: “<”: 有符号/无符号不匹配
+D:\Projects\VsProjects\Practicing\SoftRasterizer\SoftRasterizer\Scene.cpp(122,27): warning C4018: “<”: 有符号/无符号不匹配
+D:\Projects\VsProjects\Practicing\SoftRasterizer\SoftRasterizer\VectorX.h(167): warning C4172: 返回局部变量或临时变量的地址: res
+D:\Projects\VsProjects\Practicing\SoftRasterizer\SoftRasterizer\VectorX.h(222): warning C4172: 返回局部变量或临时变量的地址: res
+D:\Projects\VsProjects\Practicing\SoftRasterizer\SoftRasterizer\VectorX.h(678): warning C4172: 返回局部变量或临时变量的地址: res
+D:\Projects\VsProjects\Practicing\SoftRasterizer\SoftRasterizer\VectorX.h(132): warning C4172: 返回局部变量或临时变量的地址: res
+  SoftRasterizer.vcxproj -> D:\Projects\VsProjects\Practicing\SoftRasterizer\Debug\SoftRasterizer.exe
