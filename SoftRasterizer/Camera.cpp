@@ -19,10 +19,10 @@ void Camera::SetLens(float fovY, float aspect, float zn, float zf)
 	mFarWindowHeight = 2.0f * mFarZ * std::tanf(mFovY * 0.5f);
 
 	// 投影矩阵，还是背不过这东西...
-	Matrix4x4 proj = { std::atan(fovY) * aspect / 2, 0, 0, 0,
-		0, std::atan(fovY) / 2, 0, 0,
-		0, 0, -1 * (mNearZ + mFarZ) / (mFarZ - mNearZ), -1 * (2 * mNearZ * mFarZ) / (mFarZ - mNearZ),
-		0, 0, -1, 0 };
+	Matrix4x4 proj = {  (1 / std::tan(fovY * 0.5f)) / aspect, 0, 0, 0,
+		0, (1 / std::tan(fovY * 0.5f)), 0, 0,
+		0, 0,  -1 * (mNearZ + mFarZ) / (mFarZ - mNearZ), -1 * (2 * mNearZ * mFarZ) / (mFarZ - mNearZ),
+		0, 0, 1, 0 };
 
 	mProj = proj;
 
@@ -62,21 +62,19 @@ void Camera::SetUp(Vector3 up)
 }
 
 
-Vector3& Camera::GetPosition()
+Vector3 Camera::GetPosition()
 {
-	Vector3 res = mPosition;
-	return res;
+	return mPosition;
 }
 
 
-Matrix4x4& Camera::GetMyProj()
+Matrix4x4 Camera::GetMyProj()
 {
-	Matrix4x4 res = mProj;
-	return res;
+	return mProj;
 }
 
 
-Matrix4x4& Camera::GetMyView()
+Matrix4x4 Camera::GetMyView()
 {
 	if (mViewDirty)
 	{
@@ -92,8 +90,7 @@ Matrix4x4& Camera::GetMyView()
 
 		mView = mTV;
 	}
-	Matrix4x4 res = mView;
-	return res;
+	return mView;
 }
 
 

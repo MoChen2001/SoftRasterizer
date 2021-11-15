@@ -12,56 +12,56 @@
 class Vector2
 {
 public:
-	float u,v;
+	float u,xA;
 
 
 /// <summary>
 ///  主要是重载的内部的函数
 /// </summary>
 public:
-	Vector2():u(0),v(0) {}
+	Vector2():u(0),xA(0) {}
 	Vector2(float _u, float _v) :
-		u(_u), v(_v) {}
+		u(_u), xA(_v) {}
 
 	Vector2(const Vector2& rhs) 
 	{
 		this->u = rhs.u;
-		this->v = rhs.v;
+		this->xA = rhs.xA;
 	}
 	Vector2 operator=(const Vector2& rhs)
 	{
 		this->u = rhs.u;
-		this->v = rhs.v;
+		this->xA = rhs.xA;
 		return *this;
 	}
 
-	Vector2& operator*(int s)  const
+	Vector2 operator*(int s)  const
 	{
-		Vector2 res(this->u, this->v);
+		Vector2 res(this->u, this->xA);
 		res.u *= s;
-		res.v *= s;
+		res.xA *= s;
 		return res;
 	}
 	Vector2& operator*(float s) const
 	{
-		Vector2 res(this->u, this->v);
+		Vector2 res(this->u, this->xA);
 		res.u *= s;
-		res.v *= s;
+		res.xA *= s;
 		return res;
 	}
-	Vector2& operator+(const Vector2& rhs) const
+	Vector2 operator+(const Vector2& rhs) const
 	{
-		Vector2 res(this->u, this->v);
+		Vector2 res(this->u, this->xA);
 		res.u += rhs.u;
-		res.v += rhs.v;
+		res.xA += rhs.xA;
 		return res;
 	}
 
-	Vector2& operator-(const Vector2& rhs) const
+	Vector2 operator-(const Vector2& rhs) const
 	{
-		Vector2 res(this->u, this->v);
+		Vector2 res(this->u, this->xA);
 		res.u -= rhs.u;
-		res.v -= rhs.v;
+		res.xA -= rhs.xA;
 		return res;
 	}
 
@@ -98,7 +98,7 @@ public:
 		this->z = rhs.z;
 		return *this;
 	}
-	Vector3& operator*(int s) const
+	Vector3 operator*(int s) const
 	{
 		Vector3 res(this->x, this->y, this->z);
 		res.x *= s;
@@ -106,7 +106,7 @@ public:
 		res.z *= s;
 		return res;
 	}
-	Vector3& operator*(float s) const
+	Vector3 operator*(float s) const
 	{
 		Vector3 res(this->x, this->y, this->z);
 		res.x *= s;
@@ -114,7 +114,7 @@ public:
 		res.z *= s;
 		return res;
 	}
-	Vector3& operator+(const Vector3& rhs) const
+	Vector3 operator+(const Vector3& rhs) const
 	{
 		Vector3 res(this->x, this->y, this->z);
 		res.x += rhs.x;
@@ -123,7 +123,7 @@ public:
 		return res;
 	}
 
-	Vector3& operator-(const Vector3& rhs) const
+	Vector3 operator-(const Vector3& rhs) const
 	{
 		Vector3 res(this->x, this->y, this->z);
 		res.x -= rhs.x;
@@ -140,7 +140,7 @@ public:
 	}
 
 
-	Vector3& Normalize() const
+	Vector3 Normalize() const
 	{
 		Vector3 res;
 		float d = Distance();
@@ -157,7 +157,7 @@ public:
 	}
 
 
-	Vector3& Cross(const Vector3& rhs) const
+	Vector3 Cross(const Vector3& rhs) const
 	{
 		Vector3 res;
 		res.x = y * rhs.z - z * rhs.y;
@@ -203,7 +203,7 @@ public:
 	}
 
 
-	Vector4& operator*(int s) const
+	Vector4 operator*(int s) const
 	{
 		Vector4 res(this->x, this->y, this->z, this->w);
 		res.x *= s;
@@ -212,7 +212,7 @@ public:
 		res.w *= s;
 		return res;
 	}
-	Vector4& operator*(float s) const
+	Vector4 operator*(float s) const
 	{
 		Vector4 res(this->x, this->y, this->z, this->w);
 		res.x *= s;
@@ -221,7 +221,7 @@ public:
 		res.w *= s;
 		return res;
 	}
-	Vector4& operator+(const Vector4& rhs)
+	Vector4 operator+(const Vector4& rhs)
 	{
 		Vector4 res(this->x, this->y, this->z, this->w);
 		res.x += rhs.x;
@@ -230,7 +230,7 @@ public:
 		res.w += rhs.w;
 		return res;
 	}
-	Vector4& operator-(const Vector4& rhs)
+	Vector4 operator-(const Vector4& rhs)
 	{
 		Vector4 res(this->x, this->y, this->z, this->w);
 		res.x -= rhs.x;
@@ -295,7 +295,7 @@ public:
 		return *this;
 	}
 
-	Matrix2x2& operator*(const Matrix2x2& rhs) const
+	Matrix2x2 operator*(const Matrix2x2& rhs) const
 	{
 		Matrix2x2 res;
 		res.x11 = x11 * rhs.x11 + x12 * rhs.x21;
@@ -305,16 +305,16 @@ public:
 		return res;
 	}
 
-	Vector2& operator*(const Vector2& rhs) const
+	Vector2 operator*(const Vector2& rhs) const
 	{
 		Vector2 res;
-		res.u = x11 * rhs.u + x12 * rhs.v;
-		res.v = x21 * rhs.u + x22 * rhs.v;
+		res.u = x11 * rhs.u + x12 * rhs.xA;
+		res.xA = x21 * rhs.u + x22 * rhs.xA;
 
 		return res;
 	}
 
-	Matrix2x2& operator*(const float s) const
+	Matrix2x2 operator*(const float s) const
 	{
 		Matrix2x2 res(*this);
 		res.x11 *= s;
@@ -324,7 +324,7 @@ public:
 		return res;
 	}
 
-	Matrix2x2& operator+(const Matrix2x2& rhs) const
+	Matrix2x2 operator+(const Matrix2x2& rhs) const
 	{
 		Matrix2x2 res;
 
@@ -342,7 +342,7 @@ public:
 		return x11 * x22 - x12 * x21;
 	}
 
-	Matrix2x2& Transpose() const
+	Matrix2x2 Transpose() const
 	{
 		Matrix2x2 res(x11, x21, x12, x22);
 		return res;
@@ -351,7 +351,7 @@ public:
 	/// <summary>
 	///  分项相乘
 	/// </summary>
-	Matrix2x2& Mul(const Matrix2x2& rhs) const
+	Matrix2x2 Mul(const Matrix2x2& rhs) const
 	{
 		Matrix2x2 res;
 		res.x11 = x11 * rhs.x11;
@@ -361,7 +361,7 @@ public:
 		return res;
 	}
 
-	Matrix2x2& Inverse() const
+	Matrix2x2 Inverse() const
 	{
 		Matrix2x2 res;
 		float deter = Determinant();
@@ -421,7 +421,7 @@ public:
 	}
 
 	
-	Matrix3x3& operator+(const Matrix3x3& rhs) const
+	Matrix3x3 operator+(const Matrix3x3& rhs) const
 	{
 		Matrix3x3 res(*this);
 		res.x11 += rhs.x11;
@@ -436,7 +436,7 @@ public:
 		return res;
 	}
 
-	Matrix3x3& operator*(const Matrix3x3& rhs) const
+	Matrix3x3 operator*(const Matrix3x3& rhs) const
 	{
 		Matrix3x3 res;
 		res.x11 += x11 * rhs.x11 + x12 * rhs.x21 + x13 * rhs.x31;
@@ -454,7 +454,7 @@ public:
 		return res;
 	}
 
-	Vector3& operator*(const Vector3& rhs) const
+	Vector3 operator*(const Vector3& rhs) const
 	{
 		Vector3 res;
 		res.x = x11 * rhs.x + x12 * rhs.y + x13 * rhs.z;
@@ -463,7 +463,7 @@ public:
 		return res;
 	}
 
-	Matrix3x3& operator*(const float s) const
+	Matrix3x3 operator*(const float s) const
 	{
 		Matrix3x3 res(*this);
 		res.x11 *= s;
@@ -495,7 +495,7 @@ public:
 		return res;
 	}
 
-	Matrix3x3& Transpose() const
+	Matrix3x3 Transpose() const
 	{
 		Matrix3x3 res(x11, x21, x31, 
 			x12, x22, x32, 
@@ -503,7 +503,7 @@ public:
 		return res;
 	}
 
-	Matrix3x3& inverse() const
+	Matrix3x3 inverse() const
 	{
 		float s = 1 / Determinant();
 		Matrix3x3 res;
@@ -527,7 +527,7 @@ public:
 	/// <summary>
 	///  分项乘
 	/// </summary>
-	Matrix3x3& Mul(const Matrix3x3& rhs) const
+	Matrix3x3 Mul(const Matrix3x3& rhs) const
 	{
 		Matrix3x3 res(*this);
 		res.x11 *= rhs.x11;
@@ -616,7 +616,7 @@ public:
 	}
 
 
-	Matrix4x4& operator+(const Matrix4x4& rhs) const
+	Matrix4x4 operator+(const Matrix4x4& rhs) const
 	{
 		Matrix4x4 res(*this);
 		res.x11 += rhs.x11;
@@ -642,7 +642,7 @@ public:
 		return res;
 	}
 
-	Matrix4x4& operator*(const Matrix4x4& rhs) const
+	Matrix4x4 operator*(const Matrix4x4& rhs) const
 	{
 		Matrix4x4 res;
 		res.x11 += x11 * rhs.x11 + x12 * rhs.x21 + x13 * rhs.x31 + x14 * rhs.x41;
@@ -668,7 +668,7 @@ public:
 		return res;
 	}
 
-	Vector4& operator*(const Vector4& rhs) const
+	Vector4 operator*(const Vector4& rhs) const
 	{
 		Vector4 res;
 		res.x = x11 * rhs.x + x12 * rhs.y + x13 * rhs.z + x14 * rhs.w;
@@ -678,7 +678,7 @@ public:
 		return res;
 	}
 
-	Vector3& operator*(const Vector3& temp) const
+	Vector3 operator*(const Vector3& temp) const
 	{
 		Vector4 rhs = Vector4(temp.x, temp.y, temp.z, 0.0);
 
@@ -686,12 +686,11 @@ public:
 		res.x = x11 * rhs.x + x12 * rhs.y + x13 * rhs.z + x14 * rhs.w;
 		res.y = x21 * rhs.x + x22 * rhs.y + x23 * rhs.z + x24 * rhs.w;
 		res.z = x31 * rhs.x + x32 * rhs.y + x33 * rhs.z + x34 * rhs.w;
-		//res.w = x41 * rhs.x + x42 * rhs.y + x43 * rhs.z + x44 * rhs.w;
 		return res;
 	}
 
 
-	Matrix4x4& operator*(const float s) const
+	Matrix4x4 operator*(const float s) const
 	{
 		Matrix4x4 res(*this);
 		res.x11 *= s;
@@ -721,7 +720,7 @@ public:
 public:
 
 
-	Matrix4x4& Transpose() const
+	Matrix4x4 Transpose() const
 	{
 		Matrix4x4 res(x11, x21, x31, x41, 
 			x12, x22, x32, x42,

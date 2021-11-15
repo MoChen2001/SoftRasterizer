@@ -14,6 +14,9 @@ public:
 	int width;
 	int height;
 
+
+    bool dirty = false;
+
     // 背景颜色
     Vector4 bg_color{0,0,0,0};
     Matrix4x4 viewProt;
@@ -52,7 +55,9 @@ private:
     /// <summary>
     ///  获得索引
     /// </summary>
-    int GetIndex(int x, int y);
+    long GetIndex(int x, int y);
 
+    
+    void ComputeBarycentric2D(std::vector<Vertex> triangle, float x, float y, float& alpha, float& beat, float& gamma);
 
 };

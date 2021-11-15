@@ -29,9 +29,9 @@ public:
 	void SetTarget(Vector3 target);
 
 
-	Vector3& GetPosition();
-	Matrix4x4& GetMyView();
-	Matrix4x4& GetMyProj();
+	Vector3 GetPosition();
+	Matrix4x4 GetMyView();
+	Matrix4x4 GetMyProj();
 
 
 

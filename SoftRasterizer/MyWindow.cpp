@@ -60,9 +60,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 
     ShowWindow(hWnd, nShowCmd);
-    UpdateWindow(hWnd);
-
     MyWindow::GetInstance()->InitRenderer(w, h, hWnd);
+
+
+    UpdateWindow(hWnd);
+    MyWindow::GetInstance()->Update(hWnd);
 
 
     MSG msg = {};
@@ -75,7 +77,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         }
         else
         {
-            MyWindow::GetInstance()->Update(hWnd);
+           // MyWindow::GetInstance()->Update(hWnd);
         }
     }
 
