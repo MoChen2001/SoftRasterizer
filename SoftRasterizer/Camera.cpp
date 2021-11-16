@@ -52,13 +52,13 @@ void Camera::SetRight(Vector3 right)
 void Camera::SetTarget(Vector3 target)
 {
 	mTarget = target;
-	mViewDirty = true;
+	
 }
 
 void Camera::SetUp(Vector3 up)
 {
 	mUp = up;
-	mViewDirty = true;
+
 }
 
 

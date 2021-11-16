@@ -30,5 +30,26 @@ public:
 	{
 		return (angle / 180) * Pi;
 	}
+
+
+	template<typename T>
+	static T Clamp(const T& x, const T& low, const T& high)
+	{
+		return x < low ? low : (x > high ? high : x);
+	}
+
+
+
+	template<typename T>
+	static T Min(const T& x, const T& y)
+	{
+		return  x > y ? y : x;
+	}
+
+	template<typename T>
+	static T Max(const T& x, const T& y)
+	{
+		return  x > y ? x : y;
+	}
 };
 

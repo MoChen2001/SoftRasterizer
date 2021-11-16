@@ -1,4 +1,12 @@
-﻿  Camera.cpp
+﻿  MyWindow.cpp
+E:\Git\SoftRasterizer\SoftRasterizer\Geometry.h(67,16): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
+E:\Git\SoftRasterizer\SoftRasterizer\Geometry.h(68,17): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
+E:\Git\SoftRasterizer\SoftRasterizer\Geometry.h(69,18): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
+E:\Git\SoftRasterizer\SoftRasterizer\MyWindow.cpp(143,38): warning C4302: “类型强制转换”: 从“LPWSTR”到“WORD”截断
+E:\Git\SoftRasterizer\SoftRasterizer\MyWindow.cpp(147,45): warning C4302: “类型强制转换”: 从“LPWSTR”到“WORD”截断
   Scene.cpp
+E:\Git\SoftRasterizer\SoftRasterizer\Geometry.h(67,16): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
+E:\Git\SoftRasterizer\SoftRasterizer\Geometry.h(68,17): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
+E:\Git\SoftRasterizer\SoftRasterizer\Geometry.h(69,18): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
   正在生成代码...
   SoftRasterizer.vcxproj -> E:\Git\SoftRasterizer\x64\Debug\SoftRasterizer.exe

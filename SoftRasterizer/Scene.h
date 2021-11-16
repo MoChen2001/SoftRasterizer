@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <windows.h>
 #include "VectorX.h"
 #include "Camera.h"
 #include "RenderItem.h"
@@ -13,6 +14,13 @@ class Scene
 public:
 	int width;
 	int height;
+
+    // 摄像机的旋转使用球坐标
+    float mTheta = 1.5f * MathHelper::Pi;  // xz 平面的角度,从 z 到 x
+    float mPhi = MathHelper::PiDivTwo - 0.1f;    // 竖直平面的角度  [- pi/2, pi/2] 从 z 到 y
+    float mRadius = 5.0f;
+
+    POINT mLastMousePos;
 
 
     bool dirty = false;
@@ -31,18 +39,23 @@ public:
 
     // 渲染项
     RenderItem mRenderItem;
+    // 场景物品，保留原始信息
+    RenderItem mSceneItem;
 
 public:
 
     void InitScene(int w, int h, unsigned int*& frameBuffer);
 
     void BuildRendreItem();
-    void BuildCamera();
+    void LoadData();
     void TransformItem();
     void DrawItem();
     void ClearFrameBuffer();
     void UpdateFrame();
+    void UpdateCamera();
 
+
+    void OnKeyBoard(WPARAM wParam);
 
 private:
 

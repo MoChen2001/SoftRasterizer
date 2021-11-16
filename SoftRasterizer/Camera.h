@@ -29,6 +29,7 @@ public:
 	void SetTarget(Vector3 target);
 
 
+
 	Vector3 GetPosition();
 	Matrix4x4 GetMyView();
 	Matrix4x4 GetMyProj();
@@ -39,7 +40,7 @@ private:
 	Vector3 mPosition = { 0.0f, 0.0f, 0.0f };
 	Vector3 mRight = { 1.0f, 0.0f, 0.0f };
 	Vector3 mUp = { 0.0f, 1.0f, 0.0f };
-	Vector3 mTarget = { 0.0f, 0.0f, 1.0f };
+	Vector3 mTarget = { 0.0f, 0.0f, 0.0f };
 
 
 	float mNearZ = 0.0f;

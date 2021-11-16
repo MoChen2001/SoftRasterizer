@@ -10,5 +10,6 @@ public:
 	// DX 上用的也是智能指针，确实比较好用
 
 	std::unordered_map<std::string, std::unique_ptr<Geometry>> mGeos;	
+
 };
 

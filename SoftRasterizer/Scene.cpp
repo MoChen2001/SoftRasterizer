@@ -1,12 +1,15 @@
 #include "Scene.h"
 
 
-// 初始化场景，初始化长度高度以及帧缓冲和深度缓冲
+/// <summary>
+/// 初始化场景，初始化长度高度以及帧缓冲和深度缓冲
+/// </summary>
 void Scene::InitScene(int w, int h, unsigned int*& frameBuffer)
 {
     width = w;
     height = h;
 
+    dirty = true;
 
     Matrix4x4 tempViewProt = 
     { (float)width / 2, 0, 0,  (float)width / 2,
@@ -14,38 +17,30 @@ void Scene::InitScene(int w, int h, unsigned int*& frameBuffer)
     0, 0, 1.0f, 0.0f,
     0, 0, 0, 1.0f };
 
+    camera.SetLens(0.25f * MathHelper::Pi, 1.0f, 1.0f, 500.0f);
 
     viewProt = tempViewProt;
 
     this->frameBuffer = frameBuffer;
     depthBuffer.reset(new float[w * h]);
 
-    BuildCamera();
     BuildRendreItem();
-    
+    UpdateCamera();
 }
+
 
 /// <summary>
-///  初始化摄像机
+///  更新帧
 /// </summary>
-void Scene::BuildCamera()
+void Scene::UpdateFrame()
 {
-    camera.SetLens(0.25f * MathHelper::Pi, 1.0f, 1.0f, 500.0f);
-
-    camera.SetPosition(0,0,-1);
-
-    Vector3 target(0, 0, 0);
-    Vector3 up(0, 1, 0);
-
-    Vector3 right = target.Cross(up);
-    up = right.Cross(target);
-
-    camera.SetTarget(target);
-    camera.SetRight(right);
-    camera.SetUp(up);
-
-
+    ClearFrameBuffer();
+    UpdateCamera();
+    LoadData();
+    TransformItem();
+    DrawItem();
 }
+
 
 
 /// <summary>
@@ -53,83 +48,80 @@ void Scene::BuildCamera()
 /// </summary>
 void Scene::BuildRendreItem()
 {
-    auto triangle = std::make_unique<Geometry>();
-    Vertex v_1, v_2, v_3,v_4,v_5,v_6;
+    //auto triangle = std::make_unique<Geometry>();
+    //Vertex v_1, v_2, v_3,v_4,v_5,v_6;
+    //v_1.pos = Vector4(0.0f, 3.0f, 20.0f, 1.0f);
+    //v_2.pos = Vector4(-3.0f, 0.0f,20.0f, 1.0f);
+    //v_3.pos = Vector4(3.0f, 0.0f, 20.0f, 1.0f);
+    //v_4.pos = Vector4(0.0f, 5.0f, 21.0f, 1.0f);
+    //v_5.pos = Vector4(-3.0f, 0.0f, 21.0f, 1.0f);
+    //v_6.pos = Vector4(3.0f, 0.0f, 21.0f, 1.0f);
+    //v_1.color = Vector4(255, 0, 0, 0);
+    //v_2.color = Vector4(0, 255, 0, 0);
+    //v_3.color = Vector4(0, 0, 255, 0);
+    //v_4.color = Vector4(0, 255, 0, 0);
+    //v_5.color = Vector4(0, 255, 0, 0);
+    //v_6.color = Vector4(0, 255, 0, 0);
+    //triangle->indexs = { 0,1,2,
+    //3,4,5
+    //};
+    //triangle->vertexs.push_back(v_1);
+    //triangle->vertexs.push_back(v_2);
+    //triangle->vertexs.push_back(v_3);
+    //triangle->vertexs.push_back(v_4);
+    //triangle->vertexs.push_back(v_5);
+    //triangle->vertexs.push_back(v_6);
+    //triangle->worldMatrix = Matrix4x4{ 1.0f,0.0f,0.0f,0.0f,
+    //0.0f, 1.0f, 0.0f, 0.0f,
+    //0.0f, 0.0f, 1.0f, 0.0f,
+    //0.0f, 0.0f, 0.0f ,1.0f };
 
-    v_1.pos = Vector4(0.0f, 3.0f, 20.0f, 1.0f);
-    v_2.pos = Vector4(-3.0f, 0.0f,20.0f, 1.0f);
-    v_3.pos = Vector4(3.0f, 0.0f, 20.0f, 1.0f);
+    Cube mCube;
+    auto cube = std::make_unique<Geometry>();
 
-    v_4.pos = Vector4(0.0f, 5.0f, 21.0f, 1.0f);
-    v_5.pos = Vector4(-3.0f, 0.0f, 21.0f, 1.0f);
-    v_6.pos = Vector4(3.0f, 0.0f, 21.0f, 1.0f);
-
-    v_1.color = Vector4(255, 0, 0, 0);
-    v_2.color = Vector4(0, 255, 0, 0);
-    v_3.color = Vector4(0, 0, 255, 0);
-    v_4.color = Vector4(0, 255, 0, 0);
-    v_5.color = Vector4(0, 255, 0, 0);
-    v_6.color = Vector4(0, 255, 0, 0);
-
-    triangle->indexs = { 0,1,2,
-    3,4,5
-    };
-
-    triangle->vertexs.push_back(v_1);
-    triangle->vertexs.push_back(v_2);
-    triangle->vertexs.push_back(v_3);
-    triangle->vertexs.push_back(v_4);
-    triangle->vertexs.push_back(v_5);
-    triangle->vertexs.push_back(v_6);
-
-    triangle->worldMatrix = Matrix4x4{ 1.0f,0.0f,0.0f,0.0f,
-    0.0f, 1.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 1.0f, 0.0f,
-    0.0f, 0.0f, 0.0f ,1.0f };
+    for (int i = 0; i < mCube.vertexs.size(); i++)
+    {
+        cube->vertexs.push_back(mCube.vertexs[i]);
+    }
+    for (int i = 0; i < mCube.indexs.size(); i++)
+    {
+        cube->indexs.push_back(mCube.indexs[i]);
+    }
+    cube->worldMatrix = mCube.worldMatrix;
 
 
-    mRenderItem.mGeos["triangle"] = std::move(triangle);
-
-
+    mSceneItem.mGeos["cube"] = std::move(cube);
 }
 
 
 /// <summary>
-///  变换渲染项到齐次裁剪空间 同时进行屏幕映射
+/// 清理帧缓冲
 /// </summary>
-void Scene::TransformItem()
+void Scene::ClearFrameBuffer()
 {
-    int times = 1;
-    for (auto i = mRenderItem.mGeos.begin(); i != mRenderItem.mGeos.end(); i++)
+    for (int row = 0; row < height; ++row)
     {
-        times++;
-        for (int j = 0; j < i->second->vertexs.size(); j++)
+        for (int col = 0; col < width; ++col)
         {
-            Vector4 pos = i->second->vertexs[j].pos;
-
-            pos = i->second->worldMatrix * pos;
-
-            pos = camera.GetMyView() * pos;
-
-            pos = camera.GetMyProj() * pos;
-
-            float w = 1 / pos.w;
-            pos = pos * w;
-
-            
-            pos = viewProt * pos;
-
-            i->second->vertexs[j].pos = pos;
+            int idx = row * width + col;
+            // 默认背景色浅蓝 R123 G195 B221
+            frameBuffer[GetIndex(col, row)] = bg_color.GetIntColor();
+            // 深度缓冲区 1.0f
+            depthBuffer[GetIndex(col, row)] = 0.0f;
         }
     }
 }
 
+
+
+
+
 /// <summary>
-///  
+///  绘制渲染项
 /// </summary>
 void Scene::DrawItem()
 {
-    TransformItem();
+    
     for (auto i = mRenderItem.mGeos.begin(); i != mRenderItem.mGeos.end(); i++)
     {
 
@@ -143,39 +135,99 @@ void Scene::DrawItem()
             DrawTriangle(vertex_triangle);
         }
     }
+    mRenderItem.mGeos.clear();
 }
-
 
 
 /// <summary>
-///  更新帧
+///  读取要渲染的场景的数据
 /// </summary>
-void Scene::UpdateFrame()
+void Scene::LoadData()
 {
-    ClearFrameBuffer();
-    DrawItem();
+    for (auto iter = mSceneItem.mGeos.begin(); iter != mSceneItem.mGeos.end(); iter++)
+    {
+        auto temp = std::make_unique<Geometry>();
+        for (int i = 0; i < iter->second->vertexs.size(); i++)
+        {
+            temp->vertexs.push_back(iter->second->vertexs[i]);
+        }
+        for (int i = 0; i < iter->second->indexs.size(); i++)
+        {
+            temp->indexs.push_back(iter->second->indexs[i]);
+        }
+        temp->worldMatrix = iter->second->worldMatrix;
 
 
+        mRenderItem.mGeos[iter->first] = std::move(temp);
+    }
 }
 
 
-
-
-// 清理帧缓冲
-void Scene::ClearFrameBuffer()
+/// <summary>
+///  变换渲染项到齐次裁剪空间 同时进行屏幕映射
+/// </summary>
+void Scene::TransformItem()
 {
-    for (int row = 0; row < height; ++row)
+    LoadData();
+    for (auto i = mRenderItem.mGeos.begin(); i != mRenderItem.mGeos.end(); i++)
     {
-        for (int col = 0; col < width; ++col)
+        for (int j = 0; j < i->second->vertexs.size(); j++)
         {
-            int idx = row * width + col;
-            // 默认背景色浅蓝 R123 G195 B221
-            frameBuffer[GetIndex(col,row)] = bg_color.GetIntColor();
-            // 深度缓冲区 1.0f
-            depthBuffer[GetIndex(col, row)] = 0.0f;
+            Vector4 pos = i->second->vertexs[j].pos;
+
+            pos = i->second->worldMatrix * pos;
+
+            pos = camera.GetMyView() * pos;
+
+            pos = camera.GetMyProj() * pos;
+
+            float w = 1 / pos.w;
+            pos = pos * w;
+
+
+            pos = viewProt * pos;
+
+            i->second->vertexs[j].pos = pos;
         }
     }
 }
+
+
+/// <summary>
+///  更新摄像机
+/// </summary>
+void Scene::UpdateCamera()
+{
+    if (dirty)
+    {
+        Vector3 mEyePos;
+
+        mEyePos.x = mRadius * sinf(mPhi) * cosf(mTheta);
+        mEyePos.z = mRadius * sinf(mPhi) * sinf(mTheta);
+        mEyePos.y = mRadius * cosf(mPhi);
+
+        camera.SetPosition(mEyePos);
+
+        //Vector3 target(0, 0, 0);
+        Vector3 up(0, mEyePos.y, 0);
+
+        //Vector3 right = target.Cross(up);
+        //up = right.Cross(target);
+
+        //camera.SetTarget(target);
+        //camera.SetRight(right);
+        camera.SetUp(up);
+
+        dirty = false;
+    }
+}
+
+
+
+
+
+
+
 
 
 
@@ -185,13 +237,12 @@ void Scene::ClearFrameBuffer()
 void Scene::DrawTriangle(std::vector<Vertex> triangle)
 {
 
-
     // 包围盒
-    int minX = (int)std::min(std::min(triangle[0].pos.x, triangle[1].pos.x), triangle[2].pos.x);
-    int minY = (int)std::min(std::min(triangle[0].pos.y, triangle[1].pos.y), triangle[2].pos.y);
+    int minX = (int)MathHelper::Min(MathHelper::Min(triangle[0].pos.x, triangle[1].pos.x), triangle[2].pos.x);
+    int minY = (int)MathHelper::Min(MathHelper::Min(triangle[0].pos.y, triangle[1].pos.y), triangle[2].pos.y);
 
-    int maxX = (int)std::max(std::max(triangle[0].pos.x, triangle[1].pos.x), triangle[2].pos.x);
-    int maxY = (int)std::max(std::max(triangle[0].pos.y, triangle[1].pos.y), triangle[2].pos.y);
+    int maxX = (int)MathHelper::Max(MathHelper::Max(triangle[0].pos.x, triangle[1].pos.x), triangle[2].pos.x);
+    int maxY = (int)MathHelper::Max(MathHelper::Max(triangle[0].pos.y, triangle[1].pos.y), triangle[2].pos.y);
 
 
     // 遍历包围盒并绘制
@@ -270,7 +321,9 @@ bool Scene::IsInTriangle(Vector3& point, Vector4& v_1, Vector4& v_2, Vector4& v_
 }
 
 
-
+/// <summary>
+///  获取屏幕索引
+/// </summary>
 long Scene::GetIndex(int x, int y)
 {
     long all = width * height;
