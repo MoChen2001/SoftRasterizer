@@ -141,19 +141,23 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Geometry.h" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="MathHelper.h" />
+    <ClInclude Include="MyTime.h" />
     <ClInclude Include="MyWindow.h" />
-    <ClInclude Include="RenderItem.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="Texture.h" />
     <ClInclude Include="VectorX.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Geometry.cpp" />
+    <ClCompile Include="Material.cpp" />
     <ClCompile Include="MathHelper.cpp" />
+    <ClCompile Include="MyTime.cpp" />
     <ClCompile Include="MyWindow.cpp" />
-    <ClCompile Include="RenderItem.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="Texture.cpp" />
     <ClCompile Include="VectorX.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

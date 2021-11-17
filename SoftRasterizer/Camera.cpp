@@ -18,7 +18,6 @@ void Camera::SetLens(float fovY, float aspect, float zn, float zf)
 	mNearWindowHeight =  2.0f * mNearZ * std::tanf( mFovY * 0.5f);
 	mFarWindowHeight = 2.0f * mFarZ * std::tanf(mFovY * 0.5f);
 
-	// 投影矩阵，还是背不过这东西...
 	Matrix4x4 proj = {  (1 / std::tan(fovY * 0.5f)) / aspect, 0, 0, 0,
 		0, (1 / std::tan(fovY * 0.5f)), 0, 0,
 		0, 0,  -1 * (mNearZ + mFarZ) / (mFarZ - mNearZ), -1 * (2 * mNearZ * mFarZ) / (mFarZ - mNearZ),
@@ -31,8 +30,7 @@ void Camera::SetLens(float fovY, float aspect, float zn, float zf)
 
 void Camera::SetPosition(float x, float y, float z)
 {
-	Vector3 pos(x, y, z);
-	mPosition = pos;
+	mPosition = Vector3(x,y,z);
 	mViewDirty = true;
 }
 
@@ -42,23 +40,12 @@ void Camera::SetPosition(Vector3 pos)
 	mViewDirty = true;
 }
 
-void Camera::SetRight(Vector3 right)
-{
-	mRight = right;
-	mViewDirty = true;
-}
 
 
 void Camera::SetTarget(Vector3 target)
 {
 	mTarget = target;
-	
-}
-
-void Camera::SetUp(Vector3 up)
-{
-	mUp = up;
-
+	mViewDirty = true;
 }
 
 
@@ -78,17 +65,20 @@ Matrix4x4 Camera::GetMyView()
 {
 	if (mViewDirty)
 	{
-		//Matrix4x4 mTV = { mTarget.x, mUp.x, mRight.x, -1 * mPosition.x,
-		//	mTarget.y, mUp.y, mRight.y, -1 * mPosition.y,
-		//	mTarget.z, mUp.z, mRight.z, -1 * mPosition.z,
-		//	0, 0, 0, 1};
+		mUp = Vector3(0, 1, 0);
+		mRight = mTarget.Cross(mUp); // x
 
-		Matrix4x4 mTV = { 1,0,0, -1 * mPosition.x,
-			0, 1, 0 , -1 * mPosition.y,
-			0, 0, 1 , -1 * mPosition.z,
-			0, 0, 0, 1};
+		mUp = mRight.Cross(mTarget); // y
 
-		mView = mTV;
+		Vector3 invPos = mPosition;
+
+		Matrix4x4 _mView = { mRight.x, mRight.y, mRight.z, invPos.Dot(mRight) * -1,
+			mUp.x, mUp.y, mUp.z, invPos.Dot(mUp) * -1,
+			mTarget.x, mTarget.y, mTarget.z, invPos.Dot(mTarget) * -1,
+			0, 0, 0, 1 };
+
+		mView = _mView;
+
 	}
 	return mView;
 }

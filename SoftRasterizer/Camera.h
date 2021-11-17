@@ -24,8 +24,6 @@ public:
 	void SetLens(float fovY, float aspect, float zn, float zf);
 	void SetPosition(float x, float y, float z);
 	void SetPosition(Vector3 pos);
-	void SetRight(Vector3 right);
-	void SetUp(Vector3 up);
 	void SetTarget(Vector3 target);
 
 

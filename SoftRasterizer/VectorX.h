@@ -12,56 +12,56 @@
 class Vector2
 {
 public:
-	float u,xA;
+	float u,v;
 
 
 /// <summary>
 ///  主要是重载的内部的函数
 /// </summary>
 public:
-	Vector2():u(0),xA(0) {}
+	Vector2():u(0),v(0) {}
 	Vector2(float _u, float _v) :
-		u(_u), xA(_v) {}
+		u(_u), v(_v) {}
 
 	Vector2(const Vector2& rhs) 
 	{
 		this->u = rhs.u;
-		this->xA = rhs.xA;
+		this->v = rhs.v;
 	}
 	Vector2 operator=(const Vector2& rhs)
 	{
 		this->u = rhs.u;
-		this->xA = rhs.xA;
+		this->v = rhs.v;
 		return *this;
 	}
 
 	Vector2 operator*(int s)  const
 	{
-		Vector2 res(this->u, this->xA);
+		Vector2 res(this->u, this->v);
 		res.u *= s;
-		res.xA *= s;
+		res.v *= s;
 		return res;
 	}
 	Vector2& operator*(float s) const
 	{
-		Vector2 res(this->u, this->xA);
+		Vector2 res(this->u, this->v);
 		res.u *= s;
-		res.xA *= s;
+		res.v *= s;
 		return res;
 	}
 	Vector2 operator+(const Vector2& rhs) const
 	{
-		Vector2 res(this->u, this->xA);
+		Vector2 res(this->u, this->v);
 		res.u += rhs.u;
-		res.xA += rhs.xA;
+		res.v += rhs.v;
 		return res;
 	}
 
 	Vector2 operator-(const Vector2& rhs) const
 	{
-		Vector2 res(this->u, this->xA);
+		Vector2 res(this->u, this->v);
 		res.u -= rhs.u;
-		res.xA -= rhs.xA;
+		res.v -= rhs.v;
 		return res;
 	}
 
@@ -134,6 +134,7 @@ public:
 
 public:
 
+
 	float Distance() const
 	{
 		return std::sqrt(x * x + y * y + z * z);
@@ -156,6 +157,10 @@ public:
 		return x * rhs.x + y * rhs.y + z * rhs.z;
 	}
 
+	Vector3 Mul(const Vector3& rhs) const
+	{
+		return Vector3(x * rhs.x , y * rhs.y , z * rhs.z);
+	}
 
 	Vector3 Cross(const Vector3& rhs) const
 	{
@@ -243,12 +248,24 @@ public:
 
 public:
 
+	Vector3 toVector3()
+	{
+		return Vector3(x, y, z);
+	}
+
+
 	int GetIntColor()
 	{
 		int _x = (int)x;
 		int _y = (int)y;
 		int _z = (int)z;
 		return ((_x << 16) | (_y << 8) | _z);
+	}
+
+
+	Vector4 Mul(const Vector4& rhs)
+	{
+		return Vector4(x * rhs.x, y * rhs.y, z * rhs.z, w * rhs.w);
 	}
 
 };
@@ -308,8 +325,8 @@ public:
 	Vector2 operator*(const Vector2& rhs) const
 	{
 		Vector2 res;
-		res.u = x11 * rhs.u + x12 * rhs.xA;
-		res.xA = x21 * rhs.u + x22 * rhs.xA;
+		res.u = x11 * rhs.u + x12 * rhs.v;
+		res.v = x21 * rhs.u + x22 * rhs.v;
 
 		return res;
 	}

@@ -217,6 +217,9 @@ void MyWindow::InitRenderer(int w, int h, HWND hWnd)
 int MyWindow::Run()
 {
 	MSG msg = { 0 };
+    mTimer.Reset();
+    static float timeElapsed = 0.0f;
+
 
 	while (msg.message != WM_QUIT)
 	{
@@ -228,7 +231,16 @@ int MyWindow::Run()
 		}
         else
         {
+            mTimer.Tick();
+            timeElapsed += mTimer.DeltaTime();
+
             Update(mhMainWnd);
+
+            if (timeElapsed > 0.0166f)
+            {
+                scene->DrawScene();
+                timeElapsed = 0.0f;
+            }
         }
 	}
     ShutDown();
@@ -241,7 +253,7 @@ int MyWindow::Run()
 /// </summary>
 void MyWindow::Update(HWND hWnd)
 {
-    scene->UpdateFrame();
+    scene->UpdateSceneData();
 
     HDC hDC = GetDC(hWnd);
     BitBlt(hDC, 0, 0, scene->width, scene->height, currentHDC, 0, 0, SRCCOPY);
@@ -293,9 +305,6 @@ LRESULT MyWindow::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_MOUSEMOVE:
         OnMouseMove(wParam, (int)(short)LOWORD(lParam), (int)(short)HIWORD(lParam));
         return 0;
-    //case WM_KEYDOWN:
-    //    OnKeyBoard(wParam);
-        return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
@@ -328,8 +337,6 @@ void MyWindow::OnMouseMove(WPARAM btnState, int x, int y)
 {
     if ((btnState & MK_LBUTTON) != 0)
     {
-        scene->dirty = true;
-
         float dx = MathHelper::EulerToPi(0.25f * static_cast<float>(x - scene->mLastMousePos.x));
         float dy = MathHelper::EulerToPi(0.25f * static_cast<float>(y - scene->mLastMousePos.y));
 
@@ -341,32 +348,15 @@ void MyWindow::OnMouseMove(WPARAM btnState, int x, int y)
     }
     else if ((btnState & MK_RBUTTON) != 0)
     {
-        scene->dirty = true;
         float dx = 0.05f * static_cast<float>(x - scene->mLastMousePos.x);
         float dy = 0.05f * static_cast<float>(y - scene->mLastMousePos.y);
 
         scene->mRadius += dx - dy;
 
-        scene->mRadius = MathHelper::Clamp(scene->mRadius, 5.0f, 20.0f);
+        scene->mRadius = MathHelper::Clamp(scene->mRadius, scene->minDis, scene->maxDis);
     }
 
     scene->mLastMousePos.x = x;
     scene->mLastMousePos.y = y;
 
-}
-
-
-void MyWindow::OnKeyBoard(WPARAM btnState)
-{
-    if (GetAsyncKeyState('W') & 0x8000)
-        scene->mTheta += 1.0f;
-
-    if (GetAsyncKeyState('S') & 0x8000)
-        scene->mTheta -= 1.0f;
-
-    if (GetAsyncKeyState('A') & 0x8000)
-        scene->mPhi += 1.0f;
-
-    if (GetAsyncKeyState('D') & 0x8000)
-        scene->mPhi += 1.0f;
 }
