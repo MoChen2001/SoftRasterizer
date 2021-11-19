@@ -15,7 +15,7 @@ public:
 		float nx, float ny, float nz,
 		float cx, float cy, float cz, float cw,
 		float tx, float ty):
-		worldPos(px,py,pz,pw),worldNormal(nx,ny,nz), color(cx,cy,cz,cw),
+		modelPos(px,py,pz,pw),worldNormal(nx,ny,nz), color(cx,cy,cz,cw),
 	texcoord(tx,ty){}
 
 
@@ -24,9 +24,11 @@ public:
 
 public:
 	Vector2 texcoord;
+	Vector4 modelPos;
 	Vector4 worldPos;
 	Vector3 worldNormal;
 	Vector4 screenPos;
+	Vector4 lightScreenPos;
 	Vector4 color;
 };
 

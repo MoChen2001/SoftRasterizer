@@ -15,9 +15,6 @@ void Camera::SetLens(float fovY, float aspect, float zn, float zf)
 	mFarZ = zf;
 
 
-	mNearWindowHeight =  2.0f * mNearZ * std::tanf( mFovY * 0.5f);
-	mFarWindowHeight = 2.0f * mFarZ * std::tanf(mFovY * 0.5f);
-
 	Matrix4x4 proj = {  (1 / std::tan(fovY * 0.5f)) / aspect, 0, 0, 0,
 		0, (1 / std::tan(fovY * 0.5f)), 0, 0,
 		0, 0,  -1 * (mNearZ + mFarZ) / (mFarZ - mNearZ), -1 * (2 * mNearZ * mFarZ) / (mFarZ - mNearZ),
@@ -49,19 +46,19 @@ void Camera::SetTarget(Vector3 target)
 }
 
 
-Vector3 Camera::GetPosition()
+Vector3& Camera::GetPosition()
 {
 	return mPosition;
 }
 
 
-Matrix4x4 Camera::GetMyProj()
+Matrix4x4& Camera::GetMyProj()
 {
 	return mProj;
 }
 
 
-Matrix4x4 Camera::GetMyView()
+Matrix4x4& Camera::GetMyView()
 {
 	if (mViewDirty)
 	{

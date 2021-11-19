@@ -22,6 +22,6 @@ public:
 
 	void ReadJpg(std::string path);
 
-	Vector4 GetColor(int u, int v);
+	Vector4 GetColor(float u, float v);
 };
 

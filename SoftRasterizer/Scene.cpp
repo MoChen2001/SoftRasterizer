@@ -10,24 +10,24 @@ void Scene::InitScene(int w, int h, unsigned int*& frameBuffer)
     height = h;
 
 
-    Matrix4x4 tempViewProt = 
-    { (float)width / 2, 0, 0,  (float)width / 2,
+    viewProt = { (float)width / 2, 0, 0,  (float)width / 2,
     0, (float)height / 2, 0, (float)height / 2,
+    // 为了便于计算
     0, 0, 1.0f, 0.0f,
     0, 0, 0, 1.0f };
 
     camera.SetLens(0.25f * MathHelper::Pi, 1.0f, 1.0f, 500.0f);
 
-    viewProt = tempViewProt;
 
     this->frameBuffer = frameBuffer;
     depthBuffer.reset(new float[w * h]);
+    shadowMap.reset(new float[w * h]);
 
-    BuildLight();
     BuildMaterial();
     BuildTexture();
     BuildRendreItem();
-    UpdateCamera();
+    BuildLight();
+    BuildShadowMap();
 }
 
 /// <summary>
@@ -44,9 +44,13 @@ void Scene::UpdateSceneData()
 /// </summary>
 void Scene::DrawScene()
 {
-    ClearFrameBuffer();
-    VertexShader();
-    DrawItem();
+    if (cameraMove)
+    {
+        ClearFrameBuffer();
+        VertexShader();
+        DrawItem();
+        cameraMove = false;
+    }
 }
 
 
@@ -79,7 +83,7 @@ void Scene::BuildMaterial()
 void Scene::BuildLight()
 {
     Light l1;
-    l1.origin = Vector3(10, 10, 0);
+    l1.origin = Vector3(0, 10, -5);
     l1.intensity = Vector4(50.0f,50.0f,50.0f,0.5f);
 
     Light l2;
@@ -88,6 +92,31 @@ void Scene::BuildLight()
 
     mLights.push_back(std::move(l1));
     mLights.push_back(std::move(l2));
+
+    Vector3 lightTarget = Vector3(0, 0, 0) - l1.origin;
+    Vector3 lightUp(0, 1, 0);
+    Vector3 lightRight = lightTarget.Cross(lightUp);
+    lightUp = lightRight.Cross(lightTarget);
+
+    // 默认第一个光照为主光源
+    lightView = { lightRight.x, lightRight.y, lightRight.z, l1.origin.Dot(lightRight) * -1,
+            lightUp.x, lightUp.y, lightUp.z, l1.origin.Dot(lightUp) * -1,
+            lightTarget.x, lightTarget.y, lightTarget.z, l1.origin.Dot(lightTarget) * -1,
+            0, 0, 0, 1 };
+
+    float lightFovY = camera.GetFovY();
+    float lightAspect = camera.GetAspect();
+    float lightNear = 10;
+    float lightFar = 3000;
+
+    lightProj = { (1 / std::tan(lightFovY * 0.5f)) / lightAspect, 0, 0, 0,
+        0, (1 / std::tan(lightFovY * 0.5f)), 0, 0,
+
+        0, 0,  -1 * (lightNear + lightFar) / (lightFar - lightNear), 
+        -1 * (2 * lightNear * lightFar) / (lightFar - lightNear),
+
+        0, 0, 1, 0 };
+
 }
 
 /// <summary>
@@ -145,6 +174,20 @@ void Scene::BuildRendreItem()
     mGeos["plane"] = std::move(plane);
 }
 
+/// <summary>
+///  创建阴影贴图
+/// </summary>
+void Scene::BuildShadowMap()
+{
+    for (int row = 0; row < height; ++row)
+    {
+        for (int col = 0; col < width; ++col)
+        {
+            shadowMap[GetIndex(col, row)] = 0.0f;
+        }
+    }
+    ShadowShader();
+}
 
 
 
@@ -187,7 +230,51 @@ void Scene::UpdateCamera()
     target = target.Normalize();
 
     camera.SetTarget(target);
+
+    cameraMove = true;
 }
+
+
+
+/// <summary>
+///  绘制渲染项
+/// </summary>
+void Scene::DrawItem()
+{
+
+    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
+    {
+        int n = i->second->indexs.size();
+        for (int j = 0; j < n; j += 3)
+        {
+            std::vector<Vertex> vertex_triangle;
+            if (j + 1 > n || j + 2 > n)
+            {
+                break;
+            }
+
+            //Vertex v1 = i->second->vertexs[i->second->indexs[j]];
+            //Vertex v2 = i->second->vertexs[i->second->indexs[j + 1]];
+            //Vertex v3 = i->second->vertexs[i->second->indexs[j + 2]];
+
+
+            #pragma region 使用包围盒进行绘制的代码
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j]]);
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 1]]);
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 2]]);
+            // 背面剔除
+            if (JudgeBackOrFront(vertex_triangle))
+            {
+                FragmentShaderWithBoundingBox(vertex_triangle, i->second->materialIndex, i->second->textureIndex);
+            }
+
+            #pragma endregion
+
+
+        }
+    }
+}
+
 
 /// <summary>
 ///  主要进行顶点着色器的事情，不过多了一个视口变换以及透视除法
@@ -199,10 +286,11 @@ void Scene::VertexShader()
     {
         for (int j = 0; j < i->second->vertexs.size(); j++)
         {
-            Vector4 pos = i->second->vertexs[j].worldPos;
+            Vector4 pos = i->second->vertexs[j].modelPos;
 
-            pos = i->second->worldMatrix * pos;
+            i->second->vertexs[j].worldPos = i->second->worldMatrix * pos;
 
+            pos = i->second->vertexs[j].worldPos;
             pos = camera.GetMyView() * pos;
 
             pos = camera.GetMyProj() * pos;
@@ -210,40 +298,9 @@ void Scene::VertexShader()
             float w = 1 / pos.w;
             pos = pos * w;
 
-
             pos = viewProt * pos;
 
-
             i->second->vertexs[j].screenPos = pos;
-        }
-    }
-}
-
-/// <summary>
-///  绘制渲染项
-/// </summary>
-void Scene::DrawItem()
-{
-    
-    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
-    {
-        int n = i->second->indexs.size();
-        for (int j = 0; j < n; j += 3)
-        {
-            std::vector<Vertex> vertex_triangle;
-            if (j + 1 > n || j + 2 > n)
-            {
-                break;
-            }
-            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j]]);
-            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 1]]);
-            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 2]]);
-
-            // 背面剔除
-            if (JudgeBackOrFront(vertex_triangle))
-            {
-                FragmentShader(vertex_triangle, i->second->materialIndex, i->second->textureIndex);
-            }
         }
     }
 }
@@ -251,8 +308,9 @@ void Scene::DrawItem()
 
 /// <summary>
 /// 绘制三角形
+/// 直接使用三角形的包围盒进行判断绘制，消耗会比较大，不推荐使用
 /// </summary>
-void Scene::FragmentShader(std::vector<Vertex>& triangle, int& materialIndex, std::string& texName)
+void Scene::FragmentShaderWithBoundingBox(std::vector<Vertex>& triangle, int& materialIndex, std::string& texName)
 {
 
     // 包围盒
@@ -273,68 +331,9 @@ void Scene::FragmentShader(std::vector<Vertex>& triangle, int& materialIndex, st
                 !(j >= width || i >= height || j <= 0 || i <= 0)) // 条件保证不会出界
             {
                 int index = GetIndex(j, i);
-                float alpha = 0, beat = 0, gamma = 0;
 
-                ComputeBarycentric(triangle, screenPoint.x, screenPoint.y, alpha, beat, gamma);
-
-                float w_interpolated = 1 / (alpha * triangle[0].screenPos.w + beat * triangle[1].screenPos.w
-                    + triangle[2].screenPos.w * gamma);
-
-                // 透视修正插值
-                float z_interpolated = alpha * triangle[0].screenPos.z / triangle[0].screenPos.w
-                    + beat * triangle[1].screenPos.z / triangle[1].screenPos.w +
-                    gamma * triangle[2].screenPos.z / triangle[2].screenPos.w;
-                z_interpolated *= w_interpolated;
-
-                if (z_interpolated < depthBuffer[index])
-                {
-                    depthBuffer[index] = z_interpolated;
-                    
-
-                    Vertex point;
-                    point.worldPos = triangle[0].worldPos * alpha + triangle[1].worldPos
-                        * beat + triangle[2].worldPos * gamma;
-                    point.worldNormal = triangle[0].worldNormal * alpha + triangle[1].worldNormal 
-                        * beat + triangle[2].worldNormal * gamma;
-
-                    // 直接加可能会导致溢出，这里分开加
-                    // 或者把原来的数据类型改为 double 也行，不过没必要
-                    Vector2 x = triangle[0].texcoord * alpha;
-                    Vector2 y = triangle[1].texcoord * beat;
-                    Vector2 z = triangle[2].texcoord * gamma;
-                    point.texcoord = x + y + z;
-
-                    //point.texcoord = (triangle[0].texcoord * alpha) 
-                    //    + (triangle[1].texcoord * beat )
-                    //    + (triangle[2].texcoord * gamma);
-
-
-                    point.texcoord = point.texcoord * w_interpolated;
-
-                    if (texName == "" || mTextures[texName] == NULL)
-                    {
-                        point.color = triangle[0].color * alpha +
-                            triangle[1].color * beat
-                            + triangle[2].color * gamma;
-                    }
-                    else
-                    {
-                        int h = mTextures[texName]->height;
-                        int w = mTextures[texName]->width;
-
-                        int u = (int)(point.texcoord.u * h);
-                        int v = (int)(point.texcoord.v * w);
-
-                        point.color = mTextures[texName]->GetColor(u,v);
-                    }
-                    
-                    CalcLight(point, materialIndex);
-
-                    frameBuffer[index] = point.color.GetIntColor();
-                }
-
+                DrawPoint(triangle, screenPoint, index, materialIndex, texName);
             }
-
 
         }
     }
@@ -342,9 +341,223 @@ void Scene::FragmentShader(std::vector<Vertex>& triangle, int& materialIndex, st
 
 }
 
+/// <summary>
+///  直接使用 y 轴在中间的点分割三角形进行绘制
+/// </summary>
+/// <param name="triangle"></param>
+/// <param name="materialIndex"></param>
+/// <param name="texName"></param>
+void Scene::FragmentShaderWithTriangle(std::vector<Vertex>& triangle, int& materialIndex, std::string& texName)
+{
+
+}
+
+
+
+
+
+/// <summary>
+///  阴影贴图的着色器，
+/// 等于重新渲染一遍场景，不过是在光源的视角下
+/// </summary>
+void Scene::ShadowShader()
+{
+    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
+    {
+        for (int j = 0; j < i->second->vertexs.size(); j++)
+        {
+            Vector4 pos = i->second->vertexs[j].modelPos;
+
+            i->second->vertexs[j].worldPos = i->second->worldMatrix * pos;
+
+            pos = i->second->vertexs[j].worldPos;
+
+            pos = lightView * pos;
+
+            pos = lightProj * pos;
+
+            float w = 1 / pos.w;
+            pos = pos * w;
+
+            pos = viewProt * pos;
+
+            i->second->vertexs[j].lightScreenPos = pos;
+        }
+    }
+
+    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
+    {
+        int n = i->second->indexs.size();
+        for (int j = 0; j < n; j += 3)
+        {
+            std::vector<Vertex> vertex_triangle;
+            if (j + 1 > n || j + 2 > n)
+            {
+                break;
+            }
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j]]);
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 1]]);
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 2]]);
+            
+            ShadowFragmentShadow(vertex_triangle);
+        }
+    }
+}
+
+/// <summary>
+///  生成阴影贴图
+/// </summary>
+void Scene::ShadowFragmentShadow(std::vector<Vertex>& triangle)
+{
+    // 包围盒
+    int minX = (int)MathHelper::Min(MathHelper::Min(triangle[0].lightScreenPos.x, triangle[1].lightScreenPos.x), 
+        triangle[2].lightScreenPos.x);
+    int minY = (int)MathHelper::Min(MathHelper::Min(triangle[0].lightScreenPos.y, triangle[1].lightScreenPos.y), 
+        triangle[2].lightScreenPos.y);
+
+    int maxX = (int)MathHelper::Max(MathHelper::Max(triangle[0].lightScreenPos.x, triangle[1].lightScreenPos.x), 
+        triangle[2].lightScreenPos.x);
+    int maxY = (int)MathHelper::Max(MathHelper::Max(triangle[0].lightScreenPos.y, triangle[1].lightScreenPos.y), 
+        triangle[2].lightScreenPos.y);
+
+
+    // 遍历包围盒并绘制
+    for (int i = minY; i <= maxY; i++)
+    {
+        for (int j = minX; j <= maxX; j++)
+        {
+            Vector3 lightScreenPoint(j + 0.5f, i + 0.5f, 0.0f);
+            if (IsInTriangle(lightScreenPoint, triangle[0].lightScreenPos, 
+                triangle[1].lightScreenPos, triangle[2].lightScreenPos) &&
+                !(j >= width || i >= height || j <= 0 || i <= 0)) // 条件保证不会出界
+            {
+                int index = GetIndex(j, i);
+                float alpha = 0, beat = 0, gamma = 0;
+
+                ComputeBarycentric(triangle, lightScreenPoint.x, lightScreenPoint.y, alpha, beat, gamma,true);
+
+                float nAlpha = alpha / triangle[0].lightScreenPos.z;
+                float nBeat = beat / triangle[1].lightScreenPos.z;
+                float nGamma = gamma / triangle[2].lightScreenPos.z;
+
+                // 直接套用透视修正插值的结果
+                float depth = 1 / (nAlpha + nBeat + nGamma);
+
+                if (depth < shadowMap[index])
+                {
+                    shadowMap[index] = depth;
+                }
+            }
+        }
+    }
+}
+
 
 
 #pragma region 辅助函数
+
+
+/// <summary>
+///  绘制三角形中的点
+/// </summary>
+void Scene::DrawPoint(std::vector<Vertex>& triangle, Vector3& screenPoint, 
+    int& index, int& materialIndex, std::string& texName)
+{
+    float alpha = 0, beat = 0, gamma = 0;
+
+    ComputeBarycentric(triangle, screenPoint.x, screenPoint.y, alpha, beat, gamma, false);
+
+
+    float nAlpha = alpha / triangle[0].screenPos.z;
+    float nBeat = beat / triangle[1].screenPos.z;
+    float nGamma = gamma / triangle[2].screenPos.z;
+
+    // 直接套用透视修正插值的结果
+    float depth = 1 / (nAlpha + nBeat + nGamma);
+
+
+    if (depth < depthBuffer[index])
+    {
+        depthBuffer[index] = depth;
+
+
+        Vertex point;
+
+        point.worldPos = triangle[0].worldPos * nAlpha + triangle[1].worldPos
+            * nBeat + triangle[2].worldPos * nGamma;
+        point.worldPos = point.worldPos * depth;
+        point.worldPos.w = 1.0f;
+
+        point.worldNormal = triangle[0].worldNormal * nAlpha + triangle[1].worldNormal
+            * nBeat + triangle[2].worldNormal * nGamma;
+        point.worldNormal = point.worldNormal * depth;
+
+        // 直接加可能会导致溢出，这里分开加
+        //// 或者把原来的数据类型改为 double 也行，不过没必要
+        //Vector2 x = triangle[0].texcoord * nAlpha;
+        //Vector2 y = triangle[1].texcoord * nBeat;
+        //Vector2 z = triangle[2].texcoord * nGamma;
+        //point.texcoord = (x + y + z);
+        //point.texcoord = point.texcoord  * depth;
+
+
+        Vector2 x = triangle[0].texcoord * alpha;
+        Vector2 y = triangle[1].texcoord * beat;
+        Vector2 z = triangle[2].texcoord * gamma;
+        point.texcoord = (x + y + z);
+
+
+        if (texName == "" || mTextures[texName] == NULL)
+        {
+            point.color = triangle[0].color * alpha +
+                triangle[1].color * beat +
+                triangle[2].color * gamma;
+        }
+        else
+        {
+            point.color = mTextures[texName]->GetColor(point.texcoord.u, point.texcoord.v);
+        }
+
+        CalcLight(point, materialIndex);
+
+        if (CalcShadow(point.worldPos))
+        {
+            point.color = point.color * 0.1f;
+        }
+        frameBuffer[index] = point.color.GetIntColor();
+        
+
+    }
+
+}
+
+
+/// <summary>
+///  计算是否有阴影
+/// </summary>
+bool Scene::CalcShadow(Vector4 pos)
+{
+    // 转到了光源屏幕空间
+    pos = lightView * pos;
+    pos = lightProj * pos;
+
+    float w = 1 / pos.w;
+    pos = pos * w;
+
+    pos = viewProt * pos;
+
+    int p = pos.z * 100;
+    int shadow = shadowMap[GetIndex(pos.x, pos.y)] * 100;
+
+    if (p >= shadow)
+    {
+        return true;
+    }
+    return false;
+
+    
+}
+
 
 /// <summary>
 ///  计算光照
@@ -459,14 +672,29 @@ long Scene::GetIndex(int x, int y)
 /// <summary>
 ///  计算重心坐标插值
 /// </summary>
-void Scene::ComputeBarycentric(std::vector<Vertex> triangle, float x, float y, float& alpha, float& beat, float& gamma)
+void Scene::ComputeBarycentric(std::vector<Vertex> triangle, float x, float y, float& alpha, 
+    float& beat, float& gamma,bool isLight = false)
 {
-    float xA = triangle[0].screenPos.x;
-    float xB = triangle[1].screenPos.x;
-    float xC = triangle[2].screenPos.x;
-    float yA = triangle[0].screenPos.y;
-    float yB = triangle[1].screenPos.y;
-    float yC = triangle[2].screenPos.y;
+    float xA = 0, xB = 0, xC = 0, yA = 0, yB = 0, yC = 0;
+    if (!isLight)
+    {
+        xA = triangle[0].screenPos.x;
+        xB = triangle[1].screenPos.x;
+        xC = triangle[2].screenPos.x;
+        yA = triangle[0].screenPos.y;
+        yB = triangle[1].screenPos.y;
+        yC = triangle[2].screenPos.y;
+    }
+    else
+    {
+        xA = triangle[0].lightScreenPos.x;
+        xB = triangle[1].lightScreenPos.x;
+        xC = triangle[2].lightScreenPos.x;
+        yA = triangle[0].lightScreenPos.y;
+        yB = triangle[1].lightScreenPos.y;
+        yC = triangle[2].lightScreenPos.y;
+    }
+   
 
     // 按照公式计算的出来的东西
     //alpha = ((x - xB) * (yB - yC) + (y - yB) * (xC - xB)) / ((xA - xB) * (yB - yC) + (yA - yB) * (xC - xB));

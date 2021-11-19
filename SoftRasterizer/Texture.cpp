@@ -45,12 +45,20 @@ void Texture::ReadJpg(std::string path)
 }
 
 
-
-Vector4 Texture::GetColor(int u, int v)
+/// <summary>
+/// 获取纹理颜色
+/// </summary>
+/// <param name="u">纹理大小 * U 坐标的值</param>
+/// <param name="v">纹理大小 * V 坐标的值</param>
+/// <returns></returns>
+Vector4 Texture::GetColor(float u, float v)
 {
-    if (u < 0 || u > height || v < 0 || v > width || u >= tex.size() || v >= tex[u].size())
+    int _u = u * width;
+    int _v = v * height;
+    if (_u < 0 || _u > width || _v < 0 || v > height || _u >= tex.size() || _v >= tex[_u].size())
     {
         return Vector4(0,0,0,0);
     }
-    return tex[u][v];
+
+    return tex[_u][_v];
 }

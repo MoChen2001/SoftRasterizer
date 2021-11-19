@@ -25,21 +25,31 @@ public:
     POINT mLastMousePos;
     float minDis = 8.0f;
     float maxDis = 30.0f;
+    bool cameraMove = false;
 
 
 
     // 背景颜色
     Vector4 bg_color{150.0f,150.0f,150.0f,0};
+    // 视口变换矩阵
     Matrix4x4 viewProt;
     // 帧缓冲
 	unsigned int* frameBuffer;
     // 深度缓冲
 	std::shared_ptr<float[]> depthBuffer = nullptr;
+    // 阴影贴图,和深度缓冲区一样大
+    std::shared_ptr<float[]> shadowMap = nullptr;
+    // 主光源的视图矩阵，默认第一个光照为主光源
+    Matrix4x4 lightView;
+    // 主光源的投影矩阵，默认第一个光照为主光源
+    Matrix4x4 lightProj;
+
+
+
     // 摄像机
     Camera camera;
     // 渲染项
     std::unordered_map<std::string, std::unique_ptr<Geometry>> mGeos;
-
     // 所有生成的材质
     std::vector<Material> mMaterials;
     // 所有的贴图资源
@@ -48,6 +58,9 @@ public:
     std::vector<Light> mLights;
     // 环境光
     Vector4 ambient_Color{ 10, 10, 10 ,10};
+
+
+    
 
 
 public:
@@ -61,14 +74,27 @@ public:
     void BuildRendreItem();
     void BuildLight();
     void BuildTexture();
+    void BuildShadowMap();
 
     void UpdateCamera();
 
+    void ShadowShader();
+    void ShadowFragmentShadow(std::vector<Vertex>& triangle);
+
+
     void VertexShader();
-    void FragmentShader(std::vector<Vertex>& triangle, int& materialIndex, std::string& textureIndex);
+    void FragmentShaderWithBoundingBox(std::vector<Vertex>& triangle, int& materialIndex, std::string& textureIndex);
+    void FragmentShaderWithTriangle(std::vector<Vertex>& triangle, int& materialIndex, std::string& textureIndex);
     void DrawItem();
     void ClearFrameBuffer();
+   
 
+    // 绘制一个点
+    void DrawPoint(std::vector<Vertex>& triangle, Vector3& pointint,
+        int& index, int& materialIndex, std::string& texName);
+
+    // 计算是否有阴影
+    bool CalcShadow(Vector4 pos);
 
     // 计算光照
     void CalcLight(Vertex& point, int& materialIndex);
@@ -84,9 +110,12 @@ public:
     /// <summary>
     ///  计算重心坐标
     /// </summary>
-    void ComputeBarycentric(std::vector<Vertex> triangle, float x, float y, float& alpha, float& beat, float& gamma);
+    void ComputeBarycentric(std::vector<Vertex> triangle, float x, float y, 
+        float& alpha, float& beat, float& gamma, bool isLight);
 
-
+    /// <summary>
+    ///  判断是正面还是背面
+    /// </summary>
     bool JudgeBackOrFront(std::vector<Vertex> triangle);
 
 };

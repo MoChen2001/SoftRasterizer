@@ -26,11 +26,29 @@ public:
 	void SetPosition(Vector3 pos);
 	void SetTarget(Vector3 target);
 
+	
+
+	inline float GetFovY() const
+	{
+		return mFovY;
+	}
+	inline float GetAspect() const
+	{
+		return mAspect;
+	}
+	inline float GetNear() const
+	{
+		return mNearZ;
+	}
+	inline float GetFar() const
+	{
+		return mFarZ;
+	}
 
 
-	Vector3 GetPosition();
-	Matrix4x4 GetMyView();
-	Matrix4x4 GetMyProj();
+	Vector3& GetPosition();
+	Matrix4x4& GetMyView();
+	Matrix4x4& GetMyProj();
 
 
 
@@ -46,8 +64,6 @@ private:
 	float mAspect = 0.0f;
 	float mFovY = 0.0f;
 
-	float mNearWindowHeight = 0.0f;
-	float mFarWindowHeight = 0.0f;
 
 
 	Matrix4x4 mView;

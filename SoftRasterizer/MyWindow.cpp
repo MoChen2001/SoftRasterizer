@@ -236,7 +236,7 @@ int MyWindow::Run()
 
             Update(mhMainWnd);
 
-            if (timeElapsed > 0.0166f)
+            if (timeElapsed > 0.02f)
             {
                 scene->DrawScene();
                 timeElapsed = 0.0f;
