@@ -28,6 +28,11 @@ public:
     bool cameraMove = false;
 
 
+    bool openShadow = false;
+    bool openLight = true;
+    bool useTexture = true;
+
+
 
     // 背景颜色
     Vector4 bg_color{150.0f,150.0f,150.0f,0};
@@ -76,46 +81,54 @@ public:
     void BuildTexture();
     void BuildShadowMap();
 
+
     void UpdateCamera();
 
-    void ShadowShader();
-    void ShadowFragmentShadow(std::vector<Vertex>& triangle);
 
-
-    void VertexShader();
-    void FragmentShaderWithBoundingBox(std::vector<Vertex>& triangle, int& materialIndex, std::string& textureIndex);
-    void FragmentShaderWithTriangle(std::vector<Vertex>& triangle, int& materialIndex, std::string& textureIndex);
-    void DrawItem();
     void ClearFrameBuffer();
+    void VertexShader();
+    void FragmentShader();
    
 
-    // 绘制一个点
-    void DrawPoint(std::vector<Vertex>& triangle, Vector3& pointint,
+
+    void DrawTriangleWithBoundingBox(std::vector<Vertex>& triangle, int& materialIndex, std::string& textureIndex);
+    void DrawTriangleWithMidPoint(std::vector<Vertex>& triangle, int& materialIndex, std::string& textureIndex);
+
+    void BuildShadowWithBoundingBox(std::vector<Vertex>& triangle);
+    void BuildShadowWithMidPoint(std::vector<Vertex>& triangle);
+
+
+
+
+    void DrawPointWithTriangleLerp(std::vector<Vertex>& triangle, Vector3& point,
         int& index, int& materialIndex, std::string& texName);
+    void DrawPointBilinearLerp(Vertex& point, int& index,  int& materialIndex, std::string& texName);
 
-    // 计算是否有阴影
+
+
+    void DrawLeftTriangle(Vertex& v1, Vertex& v2, Vertex& v3, int& materialIndex, std::string& texName);
+    void DrawRightTriangle(Vertex& v1, Vertex& v2, Vertex& v3, int& materialIndex, std::string& texName);
+    void DrawLeftTriangle(Vertex& v1, Vertex& v2, Vertex& v3, bool isShadow);
+    void DrawRightTriangle(Vertex& v1, Vertex& v2, Vertex& v3, bool isShadow);
+
+
+
+
+    void ShadowVertexShader();
+    void ShadowFragmentShader();
+
+
+
+
     bool CalcShadow(Vector4 pos);
-
-    // 计算光照
     void CalcLight(Vertex& point, int& materialIndex);
 
-    // 判断点是不是在三角形内
+
+    void LerpVertex(Vertex& target, Vertex& a, Vertex& b, float t, bool isShadow);
+    void SortTriangle(std::vector<Vertex>& triangle,bool flag);
     bool IsInTriangle(Vector3& point, Vector4& v1, Vector4& v2, Vector4& v3);
-
-    /// <summary>
-    ///  获得索引
-    /// </summary>
-    long GetIndex(int x, int y);
-
-    /// <summary>
-    ///  计算重心坐标
-    /// </summary>
     void ComputeBarycentric(std::vector<Vertex> triangle, float x, float y, 
         float& alpha, float& beat, float& gamma, bool isLight);
-
-    /// <summary>
-    ///  判断是正面还是背面
-    /// </summary>
     bool JudgeBackOrFront(std::vector<Vertex> triangle);
-
+    long GetIndex(int x, int y);
 };

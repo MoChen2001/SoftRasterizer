@@ -15,9 +15,9 @@ void Camera::SetLens(float fovY, float aspect, float zn, float zf)
 	mFarZ = zf;
 
 
-	Matrix4x4 proj = {  (1 / std::tan(fovY * 0.5f)) / aspect, 0, 0, 0,
+	Matrix4x4 proj = {  1 / (std::tan(fovY * 0.5f) * aspect), 0, 0, 0,
 		0, (1 / std::tan(fovY * 0.5f)), 0, 0,
-		0, 0,  -1 * (mNearZ + mFarZ) / (mFarZ - mNearZ), -1 * (2 * mNearZ * mFarZ) / (mFarZ - mNearZ),
+		0, 0,  (mFarZ + mNearZ) / (mFarZ - mNearZ), (-2 *  mNearZ * mFarZ) / (mFarZ - mNearZ),
 		0, 0, 1, 0 };
 
 	mProj = proj;
@@ -63,9 +63,10 @@ Matrix4x4& Camera::GetMyView()
 	if (mViewDirty)
 	{
 		mUp = Vector3(0, 1, 0);
-		mRight = mTarget.Cross(mUp); // x
+		mTarget = mTarget.Normalize();
+		mRight = mTarget.Cross(mUp).Normalize(); // x
 
-		mUp = mRight.Cross(mTarget); // y
+		mUp = mRight.Cross(mTarget).Normalize(); // y
 
 		Vector3 invPos = mPosition;
 

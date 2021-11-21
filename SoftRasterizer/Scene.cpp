@@ -16,7 +16,7 @@ void Scene::InitScene(int w, int h, unsigned int*& frameBuffer)
     0, 0, 1.0f, 0.0f,
     0, 0, 0, 1.0f };
 
-    camera.SetLens(0.25f * MathHelper::Pi, 1.0f, 1.0f, 500.0f);
+    camera.SetLens(0.25f * MathHelper::Pi, 1.0f, 0.1f, 40.0f);
 
 
     this->frameBuffer = frameBuffer;
@@ -28,6 +28,8 @@ void Scene::InitScene(int w, int h, unsigned int*& frameBuffer)
     BuildRendreItem();
     BuildLight();
     BuildShadowMap();
+
+
 }
 
 /// <summary>
@@ -48,7 +50,7 @@ void Scene::DrawScene()
     {
         ClearFrameBuffer();
         VertexShader();
-        DrawItem();
+        FragmentShader();
         cameraMove = false;
     }
 }
@@ -83,39 +85,45 @@ void Scene::BuildMaterial()
 void Scene::BuildLight()
 {
     Light l1;
-    l1.origin = Vector3(0, 10, -5);
-    l1.intensity = Vector4(50.0f,50.0f,50.0f,0.5f);
+    l1.dir = Vector3(1,1,1).Normalize();
+    l1.intensity = Vector4(5.0f,5.0f,5.0f,0.5f);
 
     Light l2;
-    l2.origin = Vector3(-5, -5, -10);
-    l2.intensity = Vector4(10.0f, 10.0f, 10.0f, 0.5f);
+    l2.dir = Vector3(1,-0.7,-0.3);
+    l2.intensity = Vector4(1.0f, 1.0f, 1.0f, 0.5f);
 
     mLights.push_back(std::move(l1));
     mLights.push_back(std::move(l2));
 
-    Vector3 lightTarget = Vector3(0, 0, 0) - l1.origin;
+    Vector3 lightPos = l1.dir * -6;
+
+    Vector3 lightTarget = l1.dir * -1;
     Vector3 lightUp(0, 1, 0);
     Vector3 lightRight = lightTarget.Cross(lightUp);
     lightUp = lightRight.Cross(lightTarget);
 
     // 默认第一个光照为主光源
-    lightView = { lightRight.x, lightRight.y, lightRight.z, l1.origin.Dot(lightRight) * -1,
-            lightUp.x, lightUp.y, lightUp.z, l1.origin.Dot(lightUp) * -1,
-            lightTarget.x, lightTarget.y, lightTarget.z, l1.origin.Dot(lightTarget) * -1,
+    // 光源的位置取场景包围球的所在位置，
+    // 场景包围球半径应该为 3 
+    lightView = { lightRight.x, lightRight.y, lightRight.z, lightPos.Dot(lightRight) * -1,
+            lightUp.x, lightUp.y, lightUp.z,  lightPos.Dot(lightUp) * -1,
+            lightTarget.x, lightTarget.y, lightTarget.z , lightPos.Dot(lightUp) * -1,
             0, 0, 0, 1 };
 
-    float lightFovY = camera.GetFovY();
-    float lightAspect = camera.GetAspect();
-    float lightNear = 10;
-    float lightFar = 3000;
+    Vector4 center(0, 0, 0, 0);
 
-    lightProj = { (1 / std::tan(lightFovY * 0.5f)) / lightAspect, 0, 0, 0,
-        0, (1 / std::tan(lightFovY * 0.5f)), 0, 0,
+    center = lightView * center;
 
-        0, 0,  -1 * (lightNear + lightFar) / (lightFar - lightNear), 
-        -1 * (2 * lightNear * lightFar) / (lightFar - lightNear),
+    float n = center.z - 3.0f;
+    float f = center.z + 3.0f;
 
-        0, 0, 1, 0 };
+    /// <summary>
+    ///  平行光的正交投影，应该是场景包围盒的缩放到 齐次空间
+    /// </summary>
+    lightProj = { 1.0f / 3.0f , 0, 0, 0,
+        0,  1.0f / 3.0f, 0, 0,
+        0, 0,  1.0f / 6.0f,   -n / 6.0f,
+        0, 0, 0, 1 };
 
 }
 
@@ -183,32 +191,16 @@ void Scene::BuildShadowMap()
     {
         for (int col = 0; col < width; ++col)
         {
-            shadowMap[GetIndex(col, row)] = 0.0f;
+            shadowMap[GetIndex(col, row)] = 0.5f;
         }
     }
-    ShadowShader();
+    ShadowVertexShader();
+    ShadowFragmentShader();
 }
 
 
 
 
-/// <summary>
-/// 清理帧缓冲
-/// </summary>
-void Scene::ClearFrameBuffer()
-{
-    for (int row = 0; row < height; ++row)
-    {
-        for (int col = 0; col < width; ++col)
-        {
-            int idx = row * width + col;
-            // 默认背景色浅蓝 R123 G195 B221
-            frameBuffer[GetIndex(col, row)] = bg_color.GetIntColor();
-            // 深度缓冲区 1.0f
-            depthBuffer[GetIndex(col, row)] = 0.0f;
-        }
-    }
-}
 
 /// <summary>
 ///  更新摄像机
@@ -236,45 +228,27 @@ void Scene::UpdateCamera()
 
 
 
+
+
+
 /// <summary>
-///  绘制渲染项
+/// 清理帧缓冲
 /// </summary>
-void Scene::DrawItem()
+void Scene::ClearFrameBuffer()
 {
-
-    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
+    for (int row = 0; row < height; ++row)
     {
-        int n = i->second->indexs.size();
-        for (int j = 0; j < n; j += 3)
+        for (int col = 0; col < width; ++col)
         {
-            std::vector<Vertex> vertex_triangle;
-            if (j + 1 > n || j + 2 > n)
-            {
-                break;
-            }
-
-            //Vertex v1 = i->second->vertexs[i->second->indexs[j]];
-            //Vertex v2 = i->second->vertexs[i->second->indexs[j + 1]];
-            //Vertex v3 = i->second->vertexs[i->second->indexs[j + 2]];
-
-
-            #pragma region 使用包围盒进行绘制的代码
-            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j]]);
-            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 1]]);
-            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 2]]);
-            // 背面剔除
-            if (JudgeBackOrFront(vertex_triangle))
-            {
-                FragmentShaderWithBoundingBox(vertex_triangle, i->second->materialIndex, i->second->textureIndex);
-            }
-
-            #pragma endregion
-
-
+            int idx = row * width + col;
+            // 默认背景色浅蓝 R123 G195 B221
+            frameBuffer[GetIndex(col, row)] = bg_color.GetIntColor();
+            // 深度缓冲区 1.0f
+            depthBuffer[GetIndex(col, row)] = 1.0f;
         }
     }
-}
 
+}
 
 /// <summary>
 ///  主要进行顶点着色器的事情，不过多了一个视口变换以及透视除法
@@ -305,12 +279,112 @@ void Scene::VertexShader()
     }
 }
 
+/// <summary>
+///  片元着色器
+/// </summary>
+void Scene::FragmentShader()
+{
+
+    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
+    {
+        int n = i->second->indexs.size();
+        for (int j = 0; j < n; j += 3)
+        {
+            std::vector<Vertex> vertex_triangle;
+            if (j + 1 > n || j + 2 > n)
+            {
+                break;
+            }
+
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j]]);
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 1]]);
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 2]]);
+
+            // 背面剔除
+            if (JudgeBackOrFront(vertex_triangle))
+            {
+                // 包围盒绘制
+                //DrawTriangleWithBoundingBox(vertex_triangle, i->second->materialIndex, i->second->textureIndex);
+                
+                // 直接绘制
+                DrawTriangleWithMidPoint(vertex_triangle, i->second->materialIndex, i->second->textureIndex);
+            }
+
+
+
+        }
+    }
+}
+
+
+
+
+/// <summary>
+///  阴影贴图的着色器，
+/// 等于重新渲染一遍场景，不过是在光源的视角下
+/// </summary>
+void Scene::ShadowVertexShader()
+{
+    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
+    {
+        for (int j = 0; j < i->second->vertexs.size(); j++)
+        {
+            Vector4 pos = i->second->vertexs[j].modelPos;
+
+            pos = i->second->worldMatrix * pos;
+
+
+
+            pos = lightView * pos;
+
+            pos = lightProj * pos;
+
+            pos = viewProt * pos;
+
+            i->second->vertexs[j].lightScreenPos = pos;
+        }
+    }
+
+}
+
+/// <summary>
+///  生成阴影贴图
+/// </summary>
+void Scene::ShadowFragmentShader()
+{
+
+    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
+    {
+        int n = i->second->indexs.size();
+        for (int j = 0; j < n; j += 3)
+        {
+            std::vector<Vertex> vertex_triangle;
+            if (j + 1 > n || j + 2 > n)
+            {
+                break;
+            }
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j]]);
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 1]]);
+            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 2]]);
+
+
+            //BuildShadowWithBoundingBox(vertex_triangle);
+            BuildShadowWithMidPoint(vertex_triangle);
+        }
+    }
+
+
+}
+
+
+
+
 
 /// <summary>
 /// 绘制三角形
 /// 直接使用三角形的包围盒进行判断绘制，消耗会比较大，不推荐使用
 /// </summary>
-void Scene::FragmentShaderWithBoundingBox(std::vector<Vertex>& triangle, int& materialIndex, std::string& texName)
+void Scene::DrawTriangleWithBoundingBox(std::vector<Vertex>& triangle, int& materialIndex, std::string& texName)
 {
 
     // 包围盒
@@ -332,7 +406,7 @@ void Scene::FragmentShaderWithBoundingBox(std::vector<Vertex>& triangle, int& ma
             {
                 int index = GetIndex(j, i);
 
-                DrawPoint(triangle, screenPoint, index, materialIndex, texName);
+                DrawPointWithTriangleLerp(triangle, screenPoint, index, materialIndex, texName);
             }
 
         }
@@ -347,77 +421,55 @@ void Scene::FragmentShaderWithBoundingBox(std::vector<Vertex>& triangle, int& ma
 /// <param name="triangle"></param>
 /// <param name="materialIndex"></param>
 /// <param name="texName"></param>
-void Scene::FragmentShaderWithTriangle(std::vector<Vertex>& triangle, int& materialIndex, std::string& texName)
+void Scene::DrawTriangleWithMidPoint(std::vector<Vertex>& triangle, int& materialIndex, std::string& texName)
 {
+
+    SortTriangle(triangle,false);
+
+    // 仅仅绘制左边的三角形
+    if ((triangle[2].screenPos.x - triangle[1].screenPos.x) < 1.0f)
+    {
+        DrawLeftTriangle(triangle[0],triangle[1],triangle[2],materialIndex, texName);
+    }
+    // 仅仅绘制右边的三角形
+    else if ((triangle[1].screenPos.x - triangle[0].screenPos.x) < 1.0f)
+    {
+        DrawRightTriangle(triangle[0], triangle[1], triangle[2], materialIndex, texName);
+    }
+    // 两边都要绘制
+    else
+    {
+        float t = (triangle[1].screenPos.x - triangle[0].screenPos.x )
+            / (triangle[2].screenPos.x - triangle[0].screenPos.x);
+
+        Vertex midPoint;
+        LerpVertex(midPoint, triangle[2], triangle[0], t,false);
+
+
+        DrawLeftTriangle(triangle[0], triangle[1], midPoint, materialIndex, texName);
+        DrawRightTriangle(triangle[1], midPoint, triangle[2], materialIndex, texName);
+    }
 
 }
 
 
 
 
-
 /// <summary>
-///  阴影贴图的着色器，
-/// 等于重新渲染一遍场景，不过是在光源的视角下
+///  使用包围盒初始化阴影贴图
 /// </summary>
-void Scene::ShadowShader()
+void Scene::BuildShadowWithBoundingBox(std::vector<Vertex>& triangle)
 {
-    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
-    {
-        for (int j = 0; j < i->second->vertexs.size(); j++)
-        {
-            Vector4 pos = i->second->vertexs[j].modelPos;
 
-            i->second->vertexs[j].worldPos = i->second->worldMatrix * pos;
-
-            pos = i->second->vertexs[j].worldPos;
-
-            pos = lightView * pos;
-
-            pos = lightProj * pos;
-
-            float w = 1 / pos.w;
-            pos = pos * w;
-
-            pos = viewProt * pos;
-
-            i->second->vertexs[j].lightScreenPos = pos;
-        }
-    }
-
-    for (auto i = mGeos.begin(); i != mGeos.end(); i++)
-    {
-        int n = i->second->indexs.size();
-        for (int j = 0; j < n; j += 3)
-        {
-            std::vector<Vertex> vertex_triangle;
-            if (j + 1 > n || j + 2 > n)
-            {
-                break;
-            }
-            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j]]);
-            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 1]]);
-            vertex_triangle.push_back(i->second->vertexs[i->second->indexs[j + 2]]);
-            
-            ShadowFragmentShadow(vertex_triangle);
-        }
-    }
-}
-
-/// <summary>
-///  生成阴影贴图
-/// </summary>
-void Scene::ShadowFragmentShadow(std::vector<Vertex>& triangle)
-{
     // 包围盒
-    int minX = (int)MathHelper::Min(MathHelper::Min(triangle[0].lightScreenPos.x, triangle[1].lightScreenPos.x), 
+    int minX = (int)MathHelper::Min(MathHelper::Min(triangle[0].lightScreenPos.x, triangle[1].lightScreenPos.x),
         triangle[2].lightScreenPos.x);
-    int minY = (int)MathHelper::Min(MathHelper::Min(triangle[0].lightScreenPos.y, triangle[1].lightScreenPos.y), 
+    int minY = (int)MathHelper::Min(MathHelper::Min(triangle[0].lightScreenPos.y, triangle[1].lightScreenPos.y),
         triangle[2].lightScreenPos.y);
 
-    int maxX = (int)MathHelper::Max(MathHelper::Max(triangle[0].lightScreenPos.x, triangle[1].lightScreenPos.x), 
+    int maxX = (int)MathHelper::Max(MathHelper::Max(triangle[0].lightScreenPos.x, triangle[1].lightScreenPos.x),
         triangle[2].lightScreenPos.x);
-    int maxY = (int)MathHelper::Max(MathHelper::Max(triangle[0].lightScreenPos.y, triangle[1].lightScreenPos.y), 
+    int maxY = (int)MathHelper::Max(MathHelper::Max(triangle[0].lightScreenPos.y, triangle[1].lightScreenPos.y),
         triangle[2].lightScreenPos.y);
 
 
@@ -427,21 +479,20 @@ void Scene::ShadowFragmentShadow(std::vector<Vertex>& triangle)
         for (int j = minX; j <= maxX; j++)
         {
             Vector3 lightScreenPoint(j + 0.5f, i + 0.5f, 0.0f);
-            if (IsInTriangle(lightScreenPoint, triangle[0].lightScreenPos, 
+            if (IsInTriangle(lightScreenPoint, triangle[0].lightScreenPos,
                 triangle[1].lightScreenPos, triangle[2].lightScreenPos) &&
                 !(j >= width || i >= height || j <= 0 || i <= 0)) // 条件保证不会出界
             {
                 int index = GetIndex(j, i);
                 float alpha = 0, beat = 0, gamma = 0;
 
-                ComputeBarycentric(triangle, lightScreenPoint.x, lightScreenPoint.y, alpha, beat, gamma,true);
+                ComputeBarycentric(triangle, lightScreenPoint.x, lightScreenPoint.y, alpha, beat, gamma, true);
 
-                float nAlpha = alpha / triangle[0].lightScreenPos.z;
-                float nBeat = beat / triangle[1].lightScreenPos.z;
-                float nGamma = gamma / triangle[2].lightScreenPos.z;
+                float nAlpha = alpha * triangle[0].lightScreenPos.z;
+                float nBeat = beat * triangle[1].lightScreenPos.z;
+                float nGamma = gamma * triangle[2].lightScreenPos.z;
 
-                // 直接套用透视修正插值的结果
-                float depth = 1 / (nAlpha + nBeat + nGamma);
+                float depth =  (nAlpha + nBeat + nGamma);
 
                 if (depth < shadowMap[index])
                 {
@@ -452,15 +503,217 @@ void Scene::ShadowFragmentShadow(std::vector<Vertex>& triangle)
     }
 }
 
+void Scene::BuildShadowWithMidPoint(std::vector<Vertex>& triangle)
+{
+    SortTriangle(triangle,true);
+
+    bool isShadow = true;
+
+    // 仅仅绘制左边的三角形
+    if ((triangle[2].lightScreenPos.x - triangle[1].lightScreenPos.x) < 1.0f)
+    {
+        DrawLeftTriangle(triangle[0], triangle[1], triangle[2], isShadow);
+    }
+    // 仅仅绘制右边的三角形
+    else if ((triangle[1].lightScreenPos.x - triangle[0].lightScreenPos.x) < 1.0f)
+    {
+        DrawRightTriangle(triangle[0], triangle[1], triangle[2], isShadow);
+    }
+    // 两边都要绘制
+    else
+    {
+        float t = (triangle[1].lightScreenPos.x - triangle[0].lightScreenPos.x)
+            / (triangle[2].lightScreenPos.x - triangle[0].lightScreenPos.x);
+
+        Vertex midPoint;
+        LerpVertex(midPoint, triangle[2], triangle[0], t, isShadow);
+
+
+        DrawLeftTriangle(triangle[0], triangle[1], midPoint, isShadow);
+        DrawRightTriangle(triangle[1], midPoint, triangle[2], isShadow);
+    }
+
+   
+
+}
+
+
+
+
+/// <summary>
+///  绘制左边的三角形
+///  按照 x 由小到大的顺序排序
+///  v1.x < v2.x = v3.x
+///  bool 用来确定是不是对阴影图的处理
+/// </summary>
+void Scene::DrawLeftTriangle(Vertex& v1, Vertex& v2, Vertex& v3, int& materialIndex, std::string& texName)
+{
+   
+    for (float i = v1.screenPos.x; i <= v3.screenPos.x; i++)
+    {
+        float t = (i - v1.screenPos.x ) / (v3.screenPos.x - v1.screenPos.x);
+
+        Vertex v12,v13;
+        LerpVertex(v12, v2, v1, t,false);
+        LerpVertex(v13, v3, v1, t,false);
+        
+        if (v13.screenPos.y > v12.screenPos.y)
+        {
+            Vertex temp = v13;
+            v13 = v12;
+            v12 = temp;
+        }
+
+        for (float j = v13.screenPos.y; j <= v12.screenPos.y; j++)
+        {
+            if (!(j >= width || i >= height || j < 0 || i < 0)) // 条件保证不会出界
+            {
+                float _t = (j - v13.screenPos.y) / (v12.screenPos.y - v13.screenPos.y);
+                int index = GetIndex(i + 0.5f, j + 0.5f);
+
+                Vertex point;
+                LerpVertex(point,v12 , v13 , _t,false);
+                DrawPointBilinearLerp(point, index, materialIndex, texName);
+            }
+        }
+
+    }
+}
+
+/// <summary>
+///  绘制右边的三角形
+///  v1.x = v2.x < v3.x
+///  bool 用来确定是不是对阴影图的处理
+/// </summary>
+void Scene::DrawRightTriangle(Vertex& v1, Vertex& v2, Vertex& v3, int& materialIndex, std::string& texName)
+{
+
+    for (float i = v1.screenPos.x; i <= v3.screenPos.x; i++)
+    {
+        float t = (i - v1.screenPos.x ) / (v3.screenPos.x - v1.screenPos.x);
+
+        Vertex v13, v23;
+        LerpVertex(v13, v3, v1, t,false);
+        LerpVertex(v23, v3, v2, t,false);
+       
+        if (v13.screenPos.y > v23.screenPos.y)
+        {
+            Vertex temp = v13;
+            v13 = v23;
+            v23 = temp;
+        }
+        for (float j = v13.screenPos.y; j <= v23.screenPos.y; j++)
+        {
+            if (!(j >= width || i >= height || j < 0 || i < 0)) // 条件保证不会出界
+            {
+                float _t = (j - v13.screenPos.y) / (v23.screenPos.y - v13.screenPos.y);
+                int index = GetIndex(i + 0.5f, j + 0.5f);
+
+                Vertex point;
+                LerpVertex(point, v23, v13, _t,false);
+                DrawPointBilinearLerp(point, index, materialIndex, texName);
+            }
+        }
+
+    }
+}
+
+
+
+
+/// <summary>
+/// 用来处理阴影
+/// </summary>
+void Scene::DrawLeftTriangle(Vertex& v1, Vertex& v2, Vertex& v3, bool isShadow)
+{
+    for (float i = v1.lightScreenPos.x; i <= v3.lightScreenPos.x; i++)
+    {
+        float t = (i - v1.lightScreenPos.x) / (v3.lightScreenPos.x - v1.lightScreenPos.x);
+
+        Vertex v12, v13;
+        LerpVertex(v12, v2, v1, t, false);
+        LerpVertex(v13, v3, v1, t, false);
+
+        if (v13.lightScreenPos.y > v12.lightScreenPos.y)
+        {
+            Vertex temp = v13;
+            v13 = v12;
+            v12 = temp;
+        }
+
+        for (float j = v13.lightScreenPos.y; j <= v12.lightScreenPos.y; j++)
+        {
+            if (!(j >= width || i >= height || j < 0 || i < 0)) // 条件保证不会出界
+            {
+                float _t = (j - v13.lightScreenPos.y) / (v12.lightScreenPos.y - v13.lightScreenPos.y);
+                int index = GetIndex(i + 0.5f, j + 0.5f);
+
+                Vertex point;
+                LerpVertex(point, v12, v13, _t, false);
+                if (point.lightScreenPos.z < shadowMap[index])
+                {
+                    shadowMap[index] = point.lightScreenPos.z;
+                }
+            }
+        }
+
+    }
+}
+
+/// <summary>
+/// 用来处理阴影
+/// </summary>
+void Scene::DrawRightTriangle(Vertex& v1, Vertex& v2, Vertex& v3, bool isShadow)
+{
+    for (float i = v1.screenPos.x; i <= v3.screenPos.x; i++)
+    {
+        float t = (i - v1.screenPos.x) / (v3.screenPos.x - v1.screenPos.x);
+
+        Vertex v13, v23;
+        LerpVertex(v13, v3, v1, t, false);
+        LerpVertex(v23, v3, v2, t, false);
+
+        if (v13.screenPos.y > v23.screenPos.y)
+        {
+            Vertex temp = v13;
+            v13 = v23;
+            v23 = temp;
+        }
+        for (float j = v13.screenPos.y; j <= v23.screenPos.y; j++)
+        {
+            if (!(j >= width || i >= height || j < 0 || i < 0)) // 条件保证不会出界
+            {
+                float _t = (j - v13.screenPos.y) / (v23.screenPos.y - v13.screenPos.y);
+                int index = GetIndex(i + 0.5f, j + 0.5f);
+
+                Vertex point;
+                LerpVertex(point, v23, v13, _t, false);
+                if (point.lightScreenPos.z < shadowMap[index])
+                {
+                    shadowMap[index] = point.lightScreenPos.z;
+                }
+            }
+        }
+
+    }
+}
+
+
+
+
 
 
 #pragma region 辅助函数
 
-
 /// <summary>
-///  绘制三角形中的点
+/// 绘制三角形中的点
 /// </summary>
-void Scene::DrawPoint(std::vector<Vertex>& triangle, Vector3& screenPoint, 
+/// <param name="triangle">三角形的三个点的数组</param>
+/// <param name="screenPoint">点在屏幕上的位置</param>
+/// <param name="index">点在帧缓冲中对应的索引，使用 GetIndex() 函数获取</param>
+/// <param name="materialIndex">点的材质索引</param>
+/// <param name="texName">点的贴图名称</param>
+void Scene::DrawPointWithTriangleLerp(std::vector<Vertex>& triangle, Vector3& screenPoint,
     int& index, int& materialIndex, std::string& texName)
 {
     float alpha = 0, beat = 0, gamma = 0;
@@ -492,19 +745,6 @@ void Scene::DrawPoint(std::vector<Vertex>& triangle, Vector3& screenPoint,
             * nBeat + triangle[2].worldNormal * nGamma;
         point.worldNormal = point.worldNormal * depth;
 
-        // 直接加可能会导致溢出，这里分开加
-        //// 或者把原来的数据类型改为 double 也行，不过没必要
-        //Vector2 x = triangle[0].texcoord * nAlpha;
-        //Vector2 y = triangle[1].texcoord * nBeat;
-        //Vector2 z = triangle[2].texcoord * nGamma;
-        //point.texcoord = (x + y + z);
-        //point.texcoord = point.texcoord  * depth;
-
-
-        Vector2 x = triangle[0].texcoord * alpha;
-        Vector2 y = triangle[1].texcoord * beat;
-        Vector2 z = triangle[2].texcoord * gamma;
-        point.texcoord = (x + y + z);
 
 
         if (texName == "" || mTextures[texName] == NULL)
@@ -515,48 +755,55 @@ void Scene::DrawPoint(std::vector<Vertex>& triangle, Vector3& screenPoint,
         }
         else
         {
+            point.texcoord = triangle[0].texcoord * nAlpha + triangle[1].texcoord * nBeat
+                + triangle[2].texcoord * nGamma;
+            point.texcoord = point.texcoord * depth;
+
             point.color = mTextures[texName]->GetColor(point.texcoord.u, point.texcoord.v);
         }
 
         CalcLight(point, materialIndex);
 
-        if (CalcShadow(point.worldPos))
+        if (CalcShadow(point.worldPos) && openShadow)
         {
             point.color = point.color * 0.1f;
         }
         frameBuffer[index] = point.color.GetIntColor();
-        
+
 
     }
 
 }
-
 
 /// <summary>
-///  计算是否有阴影
+///  不适用重心坐标插值，直接绘制点
 /// </summary>
-bool Scene::CalcShadow(Vector4 pos)
+void Scene::DrawPointBilinearLerp(Vertex& point, int& index, int& materialIndex, std::string& texName)
 {
-    // 转到了光源屏幕空间
-    pos = lightView * pos;
-    pos = lightProj * pos;
-
-    float w = 1 / pos.w;
-    pos = pos * w;
-
-    pos = viewProt * pos;
-
-    int p = pos.z * 100;
-    int shadow = shadowMap[GetIndex(pos.x, pos.y)] * 100;
-
-    if (p >= shadow)
+    if (point.screenPos.z <= depthBuffer[index])
     {
-        return true;
-    }
-    return false;
+        depthBuffer[index] = point.screenPos.z;
+        if (!(texName == "" || mTextures[texName] == NULL) && useTexture)
+        {
+            point.color = mTextures[texName]->GetColor(point.texcoord.u, point.texcoord.v);
+        }
 
-    
+        if (openLight)
+        {
+            CalcLight(point, materialIndex);
+        }
+      
+
+        if (CalcShadow(point.worldPos) && openShadow)
+        {
+            point.color = point.color * 0.1f;
+        }
+
+        frameBuffer[index] = point.color.GetIntColor();
+    }
 }
+
+
 
 
 /// <summary>
@@ -566,7 +813,7 @@ bool Scene::CalcShadow(Vector4 pos)
 /// </summary>
 void Scene::CalcLight(Vertex& point, int& materialIndex)
 {
-  
+
     if (materialIndex != -1 && materialIndex < mMaterials.size() && mLights.size() > 0)
     {
         Vector4 kd = mMaterials[materialIndex].diffuse;
@@ -584,20 +831,17 @@ void Scene::CalcLight(Vertex& point, int& materialIndex)
 
         for (int lIndex = 0; lIndex < mLights.size(); lIndex++)
         {
-            Vector3 lightPos = mLights[lIndex].origin;
 
-            float atten = (point.worldPos.toVector3() - lightPos).Distance();
-            atten = 1 / atten;
             Vector4 lightIntensity = mLights[lIndex].intensity;
-            Vector3 dir = (lightPos - pos).Normalize();
+            Vector3 dir = (mLights[lIndex].dir).Normalize();
             Vector3 viewDir = (camera.GetPosition() - pos).Normalize();
 
-            diff = kd.Mul(lightIntensity) * MathHelper::Max(0.0f, normal.Dot(dir)) * atten;
+            diff = kd.Mul(lightIntensity) * MathHelper::Max(0.0f, normal.Dot(dir));
             diff = diff.Mul(vertexColor);
 
             Vector3 halfDir = (viewDir + dir).Normalize();
             spec = ks.Mul(lightIntensity) * std::pow(MathHelper::Max(0.0f,
-                normal.Dot(halfDir)), gloss) * atten;
+                normal.Dot(halfDir)), gloss);
             spec = spec.Mul(vertexColor);
 
             resColor = diff + spec + resColor;
@@ -613,6 +857,124 @@ void Scene::CalcLight(Vertex& point, int& materialIndex)
     }
 }
 
+/// <summary>
+///  计算是否有阴影
+/// </summary>
+bool Scene::CalcShadow(Vector4 pos)
+{
+    // 转到了光源屏幕空间
+
+    pos = lightView * pos;
+    pos = lightProj * pos;
+
+    pos = viewProt * pos;
+
+
+    int index = GetIndex(pos.x + 0.5f, pos.y + 0.5f);
+
+
+    if (pos.z > shadowMap[index])
+    {
+        return true;
+    }
+    return false;
+
+
+}
+
+
+/// <summary>
+///  插值 target = t * a + (1-t) * b
+/// </summary>
+void Scene::LerpVertex(Vertex& target, Vertex& a, Vertex& b, float s,bool isShadow)
+{
+    if (isShadow)
+    {
+        target.lightScreenPos = a.lightScreenPos * s = b.lightScreenPos * (1 - s);
+    }
+    else
+    {
+        if (s <= 0.01f)
+        {
+            target = b;
+            return;
+        }
+        if ((1 - s) <= 0.01f)
+        {
+            target = a;
+            return;
+        }
+
+        float depth = 1 / ((s / a.screenPos.z) + ((1 - s) / b.screenPos.z));
+
+        target.screenPos = a.screenPos * s + b.screenPos * (1 - s);
+        target.screenPos.w = 1.0f;
+        target.screenPos.z = depth;
+
+        float t = (s * a.screenPos.z) / ((s * a.screenPos.z) + ((1-s) * b.screenPos.z));
+        float invT = 1 - t;
+
+
+        target.color = a.color * t + b.color * invT;
+        target.worldNormal = a.worldNormal * t + b.worldNormal * invT;
+        target.texcoord = a.texcoord * t + b.texcoord * invT;
+        target.worldPos = a.worldPos * t + b.worldPos * invT;
+
+        target.texcoord = target.texcoord * depth;
+        target.worldPos = target.worldPos * depth;
+        target.worldPos.w = 1.0f;
+    }
+}
+
+/// <summary>
+///  将三角形按照 x 方向有小到大排序
+/// </summary>
+/// <param name="triangle"></param>
+void Scene::SortTriangle(std::vector<Vertex>& triangle,bool isShadow)
+{
+    if (isShadow)
+    {
+        if (triangle[0].lightScreenPos.x > triangle[1].lightScreenPos.x)
+        {
+            Vertex temp = triangle[0];
+            triangle[0] = triangle[1];
+            triangle[1] = temp;
+        }
+        if (triangle[0].lightScreenPos.x > triangle[2].lightScreenPos.x)
+        {
+            Vertex temp = triangle[0];
+            triangle[0] = triangle[2];
+            triangle[2] = temp;
+        }
+        if (triangle[1].lightScreenPos.x > triangle[2].lightScreenPos.x)
+        {
+            Vertex temp = triangle[1];
+            triangle[1] = triangle[2];
+            triangle[2] = temp;
+        }
+    }
+    else
+    {
+        if (triangle[0].screenPos.x > triangle[1].screenPos.x)
+        {
+            Vertex temp = triangle[0];
+            triangle[0] = triangle[1];
+            triangle[1] = temp;
+        }
+        if (triangle[0].screenPos.x > triangle[2].screenPos.x)
+        {
+            Vertex temp = triangle[0];
+            triangle[0] = triangle[2];
+            triangle[2] = temp;
+        }
+        if (triangle[1].screenPos.x > triangle[2].screenPos.x)
+        {
+            Vertex temp = triangle[1];
+            triangle[1] = triangle[2];
+            triangle[2] = temp;
+        }
+    }
+}
 
 /// <summary>
 ///  判断点是不是在三角形内
@@ -649,26 +1011,6 @@ bool Scene::IsInTriangle(Vector3& point, Vector4& v_1, Vector4& v_2, Vector4& v_
     return false;
 }
 
-
-/// <summary>
-///  获取屏幕索引
-/// </summary>
-long Scene::GetIndex(int x, int y)
-{
-    long all = width * height;
-
-    // DX 的屏幕是从左上角开始的，
-    // 这里我们希望从左下角开始，所以进行这样的变换
-
-    long res = all - (y * width) + (height - x);
-    if (res >= all || res < 0)
-    {
-        return 0;
-    }
-    return res;
-}
-
-
 /// <summary>
 ///  计算重心坐标插值
 /// </summary>
@@ -697,19 +1039,18 @@ void Scene::ComputeBarycentric(std::vector<Vertex> triangle, float x, float y, f
    
 
     // 按照公式计算的出来的东西
-    //alpha = ((x - xB) * (yB - yC) + (y - yB) * (xC - xB)) / ((xA - xB) * (yB - yC) + (yA - yB) * (xC - xB));
-    //beat = ((x - xC) * (yC - yA) + (y - yC) * (xA - xC)) / ((xB - xC) * (yC - yA) + (yB - yC) * (xA - xC));
-    //gamma = 1 - alpha - beat;
+    alpha = ((x - xB) * (yB - yC) + (y - yB) * (xC - xB)) / ((xA - xB) * (yB - yC) + (yA - yB) * (xC - xB));
+    beat = ((x - xC) * (yC - yA) + (y - yC) * (xA - xC)) / ((xB - xC) * (yC - yA) + (yB - yC) * (xA - xC));
+    gamma = 1 - alpha - beat;
 
 
     // games101 给出的，实际就是原来公式的化简
-    alpha = (x * (yB - yC) + (xC - xB) * y + xB * yC - xC * yB) / (xA * (yB - yC) + (xC - xB) * yA + xB * yC - xC * yB);
+   /* alpha = (x * (yB - yC) + (xC - xB) * y + xB * yC - xC * yB) / (xA * (yB - yC) + (xC - xB) * yA + xB * yC - xC * yB);
     beat = (x * (yC - yA) + (xA - xC) * y + xC * yA - xA * yC) / (xB * (yC - yA) + (xA - xC) * yB + xC * yA - xA * yC);
-    gamma = (x * (yA - yB) + (xB - xA) * y + xA * yB - xB * yA) / (xC * (yA - yB) + (xB - xA) * yC + xA * yB - xB * yA);
+    gamma = (x * (yA - yB) + (xB - xA) * y + xA * yB - xB * yA) / (xC * (yA - yB) + (xB - xA) * yC + xA * yB - xB * yA);*/
 
 
 }
-
 
 /// <summary>
 ///  背面剔除,为正面时返回 true
@@ -730,6 +1071,25 @@ bool Scene::JudgeBackOrFront(std::vector<Vertex> triangle)
     }
     return false;
 
+}
+
+/// <summary>
+///  获取屏幕索引
+/// </summary>
+long Scene::GetIndex(int x, int y)
+{
+    long all = width * height;
+
+    // DX 的屏幕是从左上角开始的，
+    // 这里我们希望从左下角开始，所以进行这样的变换
+    long res = all - (y * width) + x;
+
+    //long res = all - (y * width) + (height - x);
+    if (res >= all || res < 0)
+    {
+        return 0;
+    }
+    return res;
 }
 
 

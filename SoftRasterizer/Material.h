@@ -38,21 +38,21 @@ class Light
 public:
 	Light() {};
 	Light(Vector3 o,Vector4 d,Vector4 c):
-	origin(o),intensity(c){};
+	dir(o),intensity(c){};
 	~Light() {};
 	Light(const Light& rhs)
 	{
-		origin = rhs.origin;
+		dir = rhs.dir;
 		intensity = rhs.intensity;
 	}
 	Light& operaotr(const Light& rhs)
 	{
-		origin = rhs.origin;
+		dir = rhs.dir;
 		intensity = rhs.intensity;
 		return *this;
 	}
 
 public:
-	Vector3 origin;
+	Vector3 dir;
 	Vector4 intensity;
 };

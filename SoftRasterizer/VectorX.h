@@ -42,7 +42,7 @@ public:
 		res.v *= s;
 		return res;
 	}
-	Vector2& operator*(float s) const
+	Vector2 operator*(float s) const
 	{
 		Vector2 res(this->u, this->v);
 		res.u *= s;

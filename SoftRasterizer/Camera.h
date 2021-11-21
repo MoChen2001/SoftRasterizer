@@ -12,7 +12,7 @@
 class Camera
 {
 public:
-	Camera() {SetLens(0.25f * MathHelper::Pi, 1.0f, 1.0f, 1000.0f);};
+	Camera() {SetLens(0.25f * MathHelper::Pi, 1.0f, 1.0f, 300.0f);};
 
 	~Camera() {};
 	Camera(const Camera& rhs) = delete;

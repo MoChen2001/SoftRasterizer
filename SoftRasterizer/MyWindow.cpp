@@ -340,7 +340,7 @@ void MyWindow::OnMouseMove(WPARAM btnState, int x, int y)
         float dx = MathHelper::EulerToPi(0.25f * static_cast<float>(x - scene->mLastMousePos.x));
         float dy = MathHelper::EulerToPi(0.25f * static_cast<float>(y - scene->mLastMousePos.y));
 
-        scene->mTheta -= dx;
+        scene->mTheta += dx;
         scene->mPhi -= dy;
 
         scene->mPhi = MathHelper::Clamp(scene->mPhi, 0.1f, MathHelper::Pi - 0.1f);

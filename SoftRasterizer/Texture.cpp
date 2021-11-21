@@ -31,7 +31,7 @@ void Texture::ReadJpg(std::string path)
         {
             bmp->GetPixel(x, y, &color);
 
-            Vector4 _color(color.GetRed(), color.GetGreen(), color.GetBlue(), 0.0f);
+            Vector4 _color(color.GetRed(), color.GetGreen(), color.GetBlue(), .0f);
 
             temp.push_back(_color);
         }
